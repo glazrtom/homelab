@@ -4,4 +4,4 @@ replicaCount: 1
 image:
   repository: cloudflare/cloudflared
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
