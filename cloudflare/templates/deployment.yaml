@@ -23,10 +23,12 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - tunnel
+            - run
+            - --token
+            - $(TUNNEL_TOKEN)
             - --config
             - /etc/cloudflared/config/config.yaml
             - --metrics=0.0.0.0:3333
-            - run
           livenessProbe:
             httpGet:
               path: /ready
