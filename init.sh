@@ -51,13 +51,14 @@ TUNNEL_NAME=cloudflare-tunnel
 DOMAIN=
 cloudflared tunnel login
 cloudflared tunnel create $TUNNEL_NAME
-cloudflared tunnel token --cred-file <tunnel-creds>.json $TUNNEL_NAME
+# cloudflared tunnel token --cred-file <tunnel-creds>.json $TUNNEL_NAME
+cloudflared tunnel token $TUNNEL_NAME # gets encoded cloudflare token
 # Create namespace for cloudflared
 kubectl create namespace cloudflared
 # Create Kubernetes secret
-kubectl create secret generic cloudflare-credentials \
+kubectl create secret generic cloudflare-token \
   --namespace=cloudflared \
-  --from-file=credentials.json=<tunnel-creds>.json
+  --from-literal=token=""
 
 # Configure DNS
 TUNNEL_ID=$(cloudflared tunnel list | grep $TUNNEL_NAME | awk '{print $1}')
