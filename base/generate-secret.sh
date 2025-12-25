@@ -1,7 +1,7 @@
 #! /bin/bash
 
-read -r -p "Enter GitHub username: " TOKEN
-read -r -s -p "Enter GitHub PAT: " USERNAME
+read -r -p "Enter GitHub username: " USERNAME
+read -r -s -p "Enter GitHub PAT: " TOKEN
 echo
 read -r -p "Enter GitHub email: " EMAIL
 
