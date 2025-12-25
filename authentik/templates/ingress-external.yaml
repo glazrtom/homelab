@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: authentik-ingress
+  name: authentik-ingress-external
   namespace: {{ .Values.namespace }}
 spec:
-  ingressClassName: nginx-internal
+  ingressClassName: nginx-external
   rules:
-    - host: {{ .Values.ingress.domainPrefix }}.{{ .Values.global.domain.internal.suffix }}
+    - host: {{ .Values.ingress.domainPrefix }}.{{ .Values.global.domain.public.suffix }}
       http:
         paths:
           - path: /

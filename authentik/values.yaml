@@ -1,16 +1,20 @@
+namespace: authentik
+
 image:
   repository: ghcr.io/goauthentik/server
-  tag: "2024.8.2"
+  tag: "2025.10.3"
   pullPolicy: IfNotPresent
 
 service:
   name: authentik-server
+  port: 80
 
 ingress:
-  className: nginx-internal
   domainPrefix: authentik
 
 postgresql:
+  image:
+    tag: latest
   auth:
     username: authentik
     database: authentik
@@ -19,5 +23,7 @@ postgresql:
       userPasswordKey: POSTGRESQL_PASSWORD
 
 redis:
+  image:
+    tag: latest
   auth:
     enabled: false
