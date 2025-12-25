@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+echo "This script is not meant to be run directly. It's more or less templates."
+exit 1
+
 # K3s
 curl -sfL https://get.k3s.io | sh -
 
