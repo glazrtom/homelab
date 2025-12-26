@@ -14,20 +14,20 @@ spec:
         name: nginx-external
         default: false
       ingressClass: nginx-external
-    config:
-      # Trust forwarded headers
-      use-forwarded-headers: "true"
-      
-      # Map Cloudflare scheme to a real scheme
-      map-hash-bucket-size: "128"
-      http-snippet: |
-        map $http_cf_visitor $real_scheme {
-          default $scheme;
-          ~*"https" https;
-        }
-      
-      # Override headers sent to backends
-      proxySetHeaders:
-        X-Forwarded-Proto: "$real_scheme"
+      config:
+        # Trust forwarded headers
+        use-forwarded-headers: "true"
+        
+        # Map Cloudflare scheme to a real scheme
+        map-hash-bucket-size: "128"
+        http-snippet: |
+          map $http_cf_visitor $real_scheme {
+            default $scheme;
+            ~*"https" https;
+          }
+        
+        # Override headers sent to backends
+        proxySetHeaders:
+          X-Forwarded-Proto: "$real_scheme"
 #      service:
 #        loadBalancerIP: 192.168.0.241
