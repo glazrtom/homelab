@@ -10,7 +10,7 @@ service:
   port: 80
 
 ingress:
-  domainPrefix: authentik
+  domainPrefix: auth
 
 postgresql:
   image:
