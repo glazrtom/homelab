@@ -5,6 +5,9 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-Ssl on;
 spec:
   ingressClassName: nginx-external
   rules:
