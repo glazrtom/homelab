@@ -1,10 +1,5 @@
 namespace: authentik
 
-image:
-  repository: ghcr.io/goauthentik/server
-  tag: "2025.10.3"
-  pullPolicy: IfNotPresent
-
 service:
   name: authentik-server
   port: 80
@@ -12,18 +7,38 @@ service:
 ingress:
   domainPrefix: auth
 
-postgresql:
-  image:
-    tag: latest
-  auth:
-    username: authentik
-    database: authentik
-    existingSecret: authentik-secrets
-    secretKeys:
-      userPasswordKey: POSTGRESQL_PASSWORD
+authentik:
+  global:
+    namespaceOverride: authentik
+    env:
+      - name: AUTHENTIK_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: authentik-secrets
+            key: SECRET_KEY
+      - name: AUTHENTIK_POSTGRESQL__PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: authentik-secrets
+            key: POSTGRESQL_PASSWORD
 
-redis:
-  image:
-    tag: latest
-  auth:
-    enabled: false
+  authentik:
+    server:
+      service:
+        servicePortHttp: 80
+    error_reporting:
+      enabled: false
+
+  postgresql:
+    enabled: true
+    auth:
+      username: authentik
+      database: authentik
+      existingSecret: authentik-secrets
+      secretKeys:
+        userPasswordKey: POSTGRESQL_PASSWORD
+
+  redis:
+    enabled: true
+    auth:
+      enabled: false

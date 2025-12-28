@@ -1,12 +1,9 @@
 apiVersion: v2
-name: authentik
+name: authentik-2
 description:  Helm chart for authentik
 version: 0.1.0
 
 dependencies:
-  - name: postgresql
-    version: ">=18.0.0"
-    repository: https://charts.bitnami.com/bitnami
-  - name: redis
-    version: ">=24.0.0"
-    repository: https://charts.bitnami.com/bitnami
+  - name: authentik
+    version: ">=2025.10.3"
+    repository: https://charts.goauthentik.io/
