@@ -29,15 +29,14 @@ spec:
         # Override headers sent to backends
         proxySetHeaders:
           X-Forwarded-Proto: "$real_scheme"
-    
-        auth-snippet: |
+
+        # Global Authentik
+        global-auth-snippet: |
           if ($host = "auth.glazrtom.fun") {
             return 200;
           }
-        
-        # Global Authentik
+          proxy_set_header X-Forwarded-Host $http_host;
         enable-forwarded-headers: "true"
         global-auth-url: "http://ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
         global-auth-signin: "https://auth.glazrtom.fun/outpost.goauthentik.io/start?rd=$escaped_request_uri"
         global-auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid"
-        global-auth-snippet: proxy_set_header X-Forwarded-Host $http_host;
