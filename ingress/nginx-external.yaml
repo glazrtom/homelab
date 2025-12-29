@@ -35,6 +35,7 @@ spec:
           if ($host = "auth.glazrtom.fun") {
             return 200;
           }
+          proxy_set_header X-Forwarded-Host $http_host;
         enable-forwarded-headers: "true"
         global-auth-url: "http://ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
         global-auth-signin: "https://auth.glazrtom.fun/outpost.goauthentik.io/start?rd=$escaped_request_uri"
