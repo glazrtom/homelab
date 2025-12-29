@@ -29,6 +29,11 @@ spec:
         # Override headers sent to backends
         proxySetHeaders:
           X-Forwarded-Proto: "$real_scheme"
+    
+        auth-snippet: |
+          if ($host = "auth.glazrtom.fun") {
+            return 200;
+          }
         
         # Global Authentik
         enable-forwarded-headers: "true"
