@@ -1,0 +1,8 @@
+- name: Deploy workload applications via ArgoCD
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - role: argocd_apps
+      vars:
+        argocd_apps_file: "{{ homelab_manifests_base }}/apps.yaml"

@@ -16,7 +16,7 @@
   delegate_to: localhost
   ansible.builtin.copy:
     src: "{{ tmp_kubeconfig }}"
-    dest: "{{ local_kubeconfig }}"
+    dest: "{{ kubeconfig_path }}"
     mode: '0600'
     force: true
 

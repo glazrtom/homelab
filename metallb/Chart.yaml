@@ -1,0 +1,14 @@
+apiVersion: v2
+name: metallb
+description: >-
+  MetalLB (pulled in as a Helm dependency) plus this cluster's IPAddressPool
+  and L2Advertisement, so ArgoCD can manage MetalLB the same way as every
+  other chart in this repo.
+version: 0.1.0
+dependencies:
+  - name: metallb
+    # Pin to the same MetalLB version the cluster used to install from the
+    # native manifest. Verify against https://metallb.github.io/metallb
+    # before bumping.
+    version: 0.14.9
+    repository: https://metallb.github.io/metallb

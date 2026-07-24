@@ -1,0 +1,2 @@
+argocd_namespace: argocd
+argocd_install_kustomize_url: "https://github.com/glazrtom/homelab/argocd/install?ref=master"

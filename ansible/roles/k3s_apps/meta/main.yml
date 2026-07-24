@@ -1,3 +1,0 @@
-dependencies:
-  - role: k3s_python
-  - role: homelab

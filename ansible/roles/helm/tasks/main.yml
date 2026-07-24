@@ -1,0 +1,11 @@
+- name: Install Helm
+  become: true
+  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Install helm-diff plugin
+  become: false
+  ansible.builtin.command: helm plugin install https://github.com/databus23/helm-diff
+  args:
+    creates: "{{ path_home }}/.local/share/helm/plugins/helm-diff"

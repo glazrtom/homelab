@@ -1,0 +1,12 @@
+- name: Verify argocd_apps_file was provided
+  ansible.builtin.assert:
+    that:
+      - argocd_apps_file is defined
+      - argocd_apps_file | length > 0
+    fail_msg: "argocd_apps_file must be set to the app-of-apps manifest to apply."
+
+- name: Apply the app-of-apps manifest
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ argocd_apps_file }}"
+    kubeconfig: "{{ kubeconfig_path }}"

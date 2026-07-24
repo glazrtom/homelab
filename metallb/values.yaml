@@ -1,0 +1,12 @@
+# Values under `metallb:` are passed through to the upstream metallb
+# dependency chart; the defaults (speaker + controller, no extra config) are
+# fine for this single-node homelab.
+metallb: {}
+
+ipAddressPool:
+  name: default-address-pool
+  addresses:
+    - "10.0.0.150-10.0.0.200"
+
+l2Advertisement:
+  name: default-l2-advertisement

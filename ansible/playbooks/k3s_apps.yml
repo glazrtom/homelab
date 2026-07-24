@@ -1,9 +1,0 @@
-- name: Apply ArgoCD application manifests from the homelab repo
-  hosts: server
-  vars_prompt:
-    - name: app_name
-      prompt: "Enter name of ArgoCD application to deploy (leave * for all)"
-      private: no
-      default: "*"
-  roles:
-    - k3s_apps

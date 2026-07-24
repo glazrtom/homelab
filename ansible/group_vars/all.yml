@@ -1,3 +1,7 @@
-path_home: "{{ ansible_facts.env.HOME }}"
+path_home: "{{ lookup('env', 'HOME') }}"
 
-kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+remote_kubeconfig: /etc/rancher/k3s/k3s.yaml
+kubeconfig_path: "{{ path_home }}/.kube/config"
+
+path_repo_root: "{{ playbook_dir | dirname | dirname }}"
+homelab_manifests_base: "https://raw.githubusercontent.com/glazrtom/homelab/refs/heads/master/applications"

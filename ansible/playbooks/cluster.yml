@@ -1,0 +1,23 @@
+- name: Provision the server and install k3s
+  hosts: server
+  roles:
+    - server_base
+    - k3s
+
+- name: Fetch the cluster kubeconfig to the control node
+  hosts: server
+  roles:
+    - kubeconfig
+
+- name: Install the cluster foundation and hand off to ArgoCD
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - helm
+    - argocd
+    - sealed_secrets
+    - cloudflare
+    - role: argocd_apps
+      vars:
+        argocd_apps_file: "{{ homelab_manifests_base }}/core.yaml"

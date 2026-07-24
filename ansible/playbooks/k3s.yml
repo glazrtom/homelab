@@ -1,8 +1,0 @@
-- name: Install k3s and cluster bootstrap
-  hosts: server
-  vars_prompt:
-    - name: cloudflare_tunnel_token
-      prompt: "Enter Cloudflare tunnel token (leave blank to skip cloudflare setup)"
-      private: yes
-  roles:
-    - k3s

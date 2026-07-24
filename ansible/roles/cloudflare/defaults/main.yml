@@ -1,0 +1,8 @@
+cloudflare_namespace: cloudflared
+cloudflare_secret_name: cloudflared-token
+
+sealed_secrets_namespace: kube-system
+sealed_secrets_fullname: sealed-secrets-controller
+
+cloudflare_sealed_secret_rel_path: cloudflare/templates/sealed-token.yaml
+cloudflare_sealed_secret_path: "{{ path_repo_root }}/{{ cloudflare_sealed_secret_rel_path }}"
