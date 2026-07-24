@@ -1,33 +1,43 @@
 #! /bin/bash
+set -euo pipefail
+cd "$(dirname "$0")"
 
-read -r -p "Enter GitHub username: " USERNAME
-read -r -s -p "Enter GitHub PAT: " TOKEN
-echo
-read -r -p "Enter GitHub email: " EMAIL
-
-if [ -z "${USERNAME:-}" ] || [ -z "${TOKEN:-}" ] || [ -z "${EMAIL:-}" ]; then
-  echo "Error: username, token and email must be provided"
-  exit 1
-fi
+PLAIN=secrets/github-credentials.yaml
+SEALED=github-credentials-sealed.yaml
 
 mkdir -p secrets
 chmod go-rwx secrets
-echo "secrets/" > .gitignore
 
-kubectl create secret docker-registry ghcr-credentials \
-  --docker-server=ghcr.io \
-  --docker-username="$USERNAME" \
-  --docker-password="$TOKEN" \
-  --docker-email="$EMAIL" \
-  --namespace default \
-  --dry-run=client -o yaml \
-| kubectl annotate --local -f - \
-   reflector.v1.k8s.emberstack.com/reflection-allowed=true \
-   --output yaml > secrets/github-credentials.yaml
+if [ ! -f "$PLAIN" ]; then
+  USERNAME="${GHCR_USERNAME:-}"
+  TOKEN="${GHCR_TOKEN:-}"
+  EMAIL="${GHCR_EMAIL:-}"
 
-chmod go-rwx secrets/github-credentials.yaml
+  [ -n "$USERNAME" ] || read -r -p "Enter GitHub username: " USERNAME
+  [ -n "$TOKEN" ] || read -r -s -p "Enter GitHub PAT: " TOKEN
+  echo
+  [ -n "$EMAIL" ] || read -r -p "Enter GitHub email: " EMAIL
+
+  if [ -z "$USERNAME" ] || [ -z "$TOKEN" ] || [ -z "$EMAIL" ]; then
+    echo "Error: username, token and email must be provided"
+    exit 1
+  fi
+
+  kubectl create secret docker-registry ghcr-credentials \
+    --docker-server=ghcr.io \
+    --docker-username="$USERNAME" \
+    --docker-password="$TOKEN" \
+    --docker-email="$EMAIL" \
+    --namespace default \
+    --dry-run=client -o yaml \
+  | kubectl annotate --local -f - \
+     reflector.v1.k8s.emberstack.com/reflection-allowed=true \
+     --output yaml > "$PLAIN"
+
+  chmod go-rwx "$PLAIN"
+  unset USERNAME TOKEN EMAIL
+fi
 
 kubeseal --controller-namespace kube-system \
-  --format yaml < secrets/github-credentials.yaml > github-credentials-sealed.yaml
-
-unset USERNAME TOKEN EMAIL
+  --controller-name sealed-secrets-controller \
+  --format yaml < "$PLAIN" > "$SEALED"

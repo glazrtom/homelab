@@ -63,11 +63,15 @@ from — prefer `authentik_helm/`.
 
 **Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
 secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`).
-To (re)generate one, run the service's `generate-secret.sh` (in `authentik/`,
-`authentik_helm/`, `base/`, `cloudflare/`): it writes a plaintext secret to a
-git-ignored `secrets/` dir, then runs `kubeseal` to produce the committed sealed file.
-Never commit plaintext from `secrets/`. Some bootstrap secrets (VPN, TLS, Tailscale,
-Cloudflare token) are instead created imperatively — see `init.sh`.
+Each service's `generate-secret.sh` (in `authentik/`, `authentik_helm/`, `base/`,
+`cloudflare/`, `transmission/`) is **idempotent**: it reuses the plaintext already
+sitting in its git-ignored `secrets/` dir if present, only generating (random values)
+or prompting (human-supplied values, e.g. the GHCR PAT) when that plaintext is
+missing, then runs `kubeseal` to produce the committed sealed file. Sealed secrets are
+encrypted against one specific cluster's key, so re-run these after provisioning a new
+cluster — `ansible/roles/secrets` does this automatically (see Provisioning below).
+`**/secrets/` is git-ignored at the repo root; never commit plaintext from it. Some
+bootstrap secrets (TLS, Tailscale) are instead created imperatively — see `init.sh`.
 
 `base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
 (emberstack), which mirrors it into other namespaces.
@@ -105,14 +109,23 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys MetalLB,
   ingress, its own self-config, and Cloudflare (see sync-wave annotations in
   `applications/core/*.yaml`).
-- **`playbooks/apps.yml`** (stage 2) applies `applications/apps.yaml`; ArgoCD then
-  deploys every workload under `applications/apps/`.
-- Because `helm`/`sealed_secrets`/`argocd`/`cloudflare`/`argocd_apps` run on the
-  **control node** (not the server) against the fetched kubeconfig, that machine needs
-  `kubectl`, `helm`, `kubeseal`, and `git` (with push access to this repo) available.
-- `playbooks/storage.yml` (mount a disk at `/mnt/storage`) and `playbooks/vpn_secret.yml`
-  (Windscribe VPN secret) are situational — run individually, on demand.
-- Prompt-bearing roles/playbooks (`storage`, `vpn_secret`, and the `cloudflare` role's
+- **`playbooks/apps.yml`** (stage 2) runs `secrets` (prompts whether to regenerate
+  app sealed secrets — see below) → `argocd_apps` (applies `applications/apps.yaml`;
+  ArgoCD then deploys every workload under `applications/apps/`) → a post-task that
+  polls the cluster for each secret and warns if one never decrypted (stale key).
+- The `secrets` role, once you answer yes, loops over the `generate-secret.sh` of
+  every app in its `secrets_items` list (`authentik/`, `authentik_helm/`, `base/`,
+  `transmission/`), prompting only for the human-supplied ones that have no local
+  plaintext yet (leave blank to skip that one and keep its committed sealed file),
+  then commits and pushes just the sealed files that changed. Run it standalone via
+  `playbooks/secrets.yml` without redeploying anything.
+- Because `helm`/`sealed_secrets`/`argocd`/`cloudflare`/`argocd_apps`/`secrets` run on
+  the **control node** (not the server) against the fetched kubeconfig, that machine
+  needs `kubectl`, `helm`, `kubeseal`, and `git` (with push access to this repo)
+  available.
+- `playbooks/storage.yml` (mount a disk at `/mnt/storage`) is situational — run
+  individually, on demand.
+- Prompt-bearing roles/playbooks (`storage`, `secrets`, and the `cloudflare` role's
   internal `pause` prompt) no-op or fall back sensibly when left blank — see each
   role/playbook for specifics.
 - Tunables live in each role's `defaults/main.yml`. `kubeconfig_path` (the local,
