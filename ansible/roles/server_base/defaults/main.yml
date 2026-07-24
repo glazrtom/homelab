@@ -1,0 +1,10 @@
+server_hostname: orangepi
+
+# Dedicated non-login service account/group; the login user is added to the group.
+server_group: server
+server_gid: 1001
+server_user: server
+server_uid: 1001
+
+# Existing login user that should gain access to the server group.
+server_admin_user: "{{ ansible_facts.user_id }}"

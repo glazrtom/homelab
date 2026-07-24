@@ -1,0 +1,168 @@
+# cloudflare_tunnel_token is provided by the calling playbook's vars_prompt.
+# kubeconfig_path comes from group_vars/server.yml.
+
+- name: Download and install k3s
+  become: true
+  ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik --disable servicelb" sh -
+  args:
+    creates: /usr/local/bin/k3s  # prevents rerun unless k3s is removed
+
+- name: Ensure k3s service is enabled and running
+  become: true
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+    enabled: yes
+
+- name: Install MetalLB
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ metallb_manifest }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Wait until the MetalLB controller is available
+  become: true
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: metallb-system
+    name: controller
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: metallb_controller
+  until: metallb_controller.resources | length > 0 and metallb_controller.resources[0].status.availableReplicas is defined and metallb_controller.resources[0].status.availableReplicas > 0
+  retries: 20
+  delay: 5
+
+- name: Configure MetalLB IPAddressPool
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: metallb.io/v1beta1
+      kind: IPAddressPool
+      metadata:
+        name: default-address-pool
+        namespace: metallb-system
+      spec:
+        addresses:
+          - "{{ metallb_ip_range }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Configure MetalLB L2Advertisement
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: metallb.io/v1beta1
+      kind: L2Advertisement
+      metadata:
+        name: default-l2-advertisement
+        namespace: metallb-system
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Create ArgoCD namespace
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: argocd
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Install ArgoCD
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ argocd_manifest }}"
+    namespace: argocd
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Apply ArgoCD configuration
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ homelab_manifests_base }}/argo.yaml"
+    namespace: argocd
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Install ingress controllers
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ homelab_manifests_base }}/ingress.yaml"
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Create cloudflared namespace
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: cloudflared
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Create Cloudflare credentials secret
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cloudflared-token
+        namespace: cloudflared
+      type: Opaque
+      stringData:
+        token: "{{ cloudflare_tunnel_token }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+  when: cloudflare_tunnel_token | default('') | length > 0
+
+- name: Install cloudflared
+  become: true
+  kubernetes.core.k8s:
+    namespace: argocd
+    state: present
+    src: "{{ homelab_manifests_base }}/cloudflared.yaml"
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Install Helm
+  become: true
+  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Install helm-diff plugin
+  become: true
+  ansible.builtin.command: helm plugin install https://github.com/databus23/helm-diff
+  args:
+    creates: /root/.local/share/helm/plugins/helm-diff
+
+- name: Add Helm repo for SealedSecrets
+  become: true
+  kubernetes.core.helm_repository:
+    name: sealed-secrets
+    repo_url: https://bitnami-labs.github.io/sealed-secrets
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Update Helm repo cache
+  become: true
+  ansible.builtin.command: helm repo update
+  changed_when: false
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+- name: Install SealedSecrets controller
+  become: true
+  kubernetes.core.helm:
+    name: sealed-secrets
+    chart_ref: sealed-secrets/sealed-secrets
+    namespace: kube-system
+    values:
+      fullnameOverride: "sealed-secrets-controller"
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"

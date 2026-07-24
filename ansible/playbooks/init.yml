@@ -1,0 +1,5 @@
+# First-run base: hostname + server user/group (1001:1001), login user joins group.
+- name: Initial server setup
+  hosts: server
+  roles:
+    - server_base

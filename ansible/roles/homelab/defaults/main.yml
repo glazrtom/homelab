@@ -1,0 +1,3 @@
+homelab_repo_url: "https://github.com/tomato4/homelab.git"
+homelab_repo_dest: "{{ path_home }}/homelab"
+homelab_applications_dir: "{{ homelab_repo_dest }}/applications"

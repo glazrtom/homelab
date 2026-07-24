@@ -1,0 +1,3 @@
+path_home: "{{ ansible_facts.env.HOME }}"
+
+kubeconfig_path: /etc/rancher/k3s/k3s.yaml

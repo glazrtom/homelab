@@ -1,0 +1,3 @@
+remote_kubeconfig: /etc/rancher/k3s/k3s.yaml
+local_kubeconfig: ~/.kube/config
+tmp_kubeconfig: "/tmp/kubeconfig_{{ inventory_hostname }}"

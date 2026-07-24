@@ -1,0 +1,6 @@
+metallb_ip_range: "10.0.0.150-10.0.0.200"
+metallb_manifest: "https://raw.githubusercontent.com/metallb/metallb/v0.15.2/config/manifests/metallb-native.yaml"
+argocd_manifest: "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+
+# Homelab manifests applied during bootstrap.
+homelab_manifests_base: "https://raw.githubusercontent.com/tomato4/homelab/refs/heads/master/applications"

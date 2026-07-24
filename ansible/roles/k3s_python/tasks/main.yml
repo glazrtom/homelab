@@ -1,0 +1,14 @@
+- name: Update apt cache
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Python packages for the Kubernetes modules
+  become: true
+  ansible.builtin.apt:
+    name:
+      - python3-kubernetes
+      - python3-openshift
+      - python3-yaml
+      - python3-pip
+    state: present

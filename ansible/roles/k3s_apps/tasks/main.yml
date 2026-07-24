@@ -1,0 +1,17 @@
+# app_name is provided by the calling playbook's vars_prompt ("*" = all apps).
+- name: Find all ArgoCD application YAML files
+  ansible.builtin.find:
+    paths: "{{ homelab_applications_dir }}"
+    patterns: '{{ app_name }}.yaml,{{ app_name }}.yml'
+    recurse: yes
+  register: app_yamls
+
+- name: Apply all ArgoCD application yamls
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ item.path }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+  loop: "{{ app_yamls.files }}"
+  loop_control:
+    label: "{{ item.path }}"

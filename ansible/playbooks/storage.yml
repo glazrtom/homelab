@@ -1,0 +1,16 @@
+# Optional: mount a storage disk at /mnt/storage and persist it in fstab.
+- name: Mount storage disk
+  hosts: server
+  gather_facts: false
+  vars_prompt:
+    - name: storage_disk_device
+      prompt: "Enter the device path for the storage disk (leave empty to skip)"
+      private: no
+  tasks:
+    - name: Skip when no device provided
+      ansible.builtin.meta: end_play
+      when: storage_disk_device | default('') | length == 0
+
+    - name: Configure and mount the storage disk
+      ansible.builtin.include_role:
+        name: storage

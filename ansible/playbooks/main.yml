@@ -1,0 +1,7 @@
+# Full server provisioning bundle. Chains the prompt-bearing playbooks so each
+# keeps its own vars_prompt. storage.yml and vpn_secret.yml are situational and
+# run on demand, so they are intentionally left out.
+- import_playbook: init.yml
+- import_playbook: k3s.yml
+- import_playbook: k3s_apps.yml
+- import_playbook: kubeconfig.yml

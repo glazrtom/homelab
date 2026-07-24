@@ -1,0 +1,34 @@
+# storage_disk_device is provided by the calling playbook's vars_prompt.
+# The playbook skips this role entirely when the device is left empty.
+- name: Get UUID of the storage disk
+  become: true
+  ansible.builtin.command: blkid -s UUID -o value {{ storage_disk_device }}
+  register: storage_disk_uuid
+  changed_when: false
+  failed_when: storage_disk_uuid.stdout == ""
+
+- name: Ensure /mnt/storage exists
+  become: true
+  ansible.builtin.file:
+    path: /mnt/storage
+    state: directory
+    owner: "{{ server_user | default('server') }}"
+    group: "{{ server_group | default('server') }}"
+    mode: '0770'
+
+- name: Add the storage disk to /etc/fstab
+  become: true
+  ansible.posix.mount:
+    path: /mnt/storage
+    src: "UUID={{ storage_disk_uuid.stdout }}"
+    fstype: auto
+    opts: defaults
+    state: present
+
+- name: Mount the storage disk
+  become: true
+  ansible.posix.mount:
+    path: /mnt/storage
+    src: "UUID={{ storage_disk_uuid.stdout }}"
+    fstype: auto
+    state: mounted

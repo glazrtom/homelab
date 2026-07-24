@@ -1,0 +1,27 @@
+- name: Fetch kubeconfig from the server
+  become: true
+  ansible.builtin.fetch:
+    src: "{{ remote_kubeconfig }}"
+    dest: "{{ tmp_kubeconfig }}"
+    flat: yes
+
+- name: Replace server IP in kubeconfig with the host's IP
+  delegate_to: localhost
+  ansible.builtin.replace:
+    path: "{{ tmp_kubeconfig }}"
+    regexp: "server: https://.*:6443"
+    replace: "server: https://{{ hostvars[inventory_hostname]['ansible_host'] }}:6443"
+
+- name: Copy the kubeconfig to the local default location
+  delegate_to: localhost
+  ansible.builtin.copy:
+    src: "{{ tmp_kubeconfig }}"
+    dest: "{{ local_kubeconfig }}"
+    mode: '0600'
+    force: true
+
+- name: Clean up the temporary kubeconfig
+  delegate_to: localhost
+  ansible.builtin.file:
+    path: "{{ tmp_kubeconfig }}"
+    state: absent

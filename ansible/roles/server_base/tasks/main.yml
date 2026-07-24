@@ -1,0 +1,28 @@
+- name: Set hostname
+  become: true
+  ansible.builtin.hostname:
+    name: "{{ server_hostname }}"
+
+- name: Ensure the server group exists
+  become: true
+  ansible.builtin.group:
+    name: "{{ server_group }}"
+    gid: "{{ server_gid }}"
+    state: present
+
+- name: Create the server service account
+  become: true
+  ansible.builtin.user:
+    name: "{{ server_user }}"
+    uid: "{{ server_uid }}"
+    group: "{{ server_group }}"
+    create_home: no
+    shell: /sbin/nologin
+    state: present
+
+- name: Add the login user to the server group
+  become: true
+  ansible.builtin.user:
+    name: "{{ server_admin_user }}"
+    groups: "{{ server_group }}"
+    append: true

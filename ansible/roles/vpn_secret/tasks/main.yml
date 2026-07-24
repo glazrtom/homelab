@@ -1,0 +1,35 @@
+# vpn_username / vpn_password come from the calling playbook's vars_prompt.
+# The playbook skips this role when either is empty.
+# TODO this will not work on a fresh installation due to missing namespaces.
+# Also it is ugly. Refactor!
+- name: Create Windscribe-auth secret in the media namespace
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    namespace: media
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: windscribe-auth
+      type: Opaque
+      stringData:
+        username: "{{ vpn_username }}"
+        password: "{{ vpn_password }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Create Windscribe-auth secret in the transmission namespace
+  become: true
+  kubernetes.core.k8s:
+    state: present
+    namespace: transmission
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: windscribe-auth
+      type: Opaque
+      stringData:
+        username: "{{ vpn_username }}"
+        password: "{{ vpn_password }}"
+    kubeconfig: "{{ kubeconfig_path }}"

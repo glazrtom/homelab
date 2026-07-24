@@ -1,0 +1,6 @@
+- name: Clone or update the homelab repo
+  ansible.builtin.git:
+    repo: "{{ homelab_repo_url }}"
+    dest: "{{ homelab_repo_dest }}"
+    version: master
+    update: yes
