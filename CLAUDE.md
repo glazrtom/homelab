@@ -13,7 +13,7 @@ Makefile/Taskfile, and no build step.
 ## How deployment works
 
 - Each service is registered as an ArgoCD `Application` CR under `applications/core/`
-  (cluster infra: MetalLB, ingress, ArgoCD self-config, Cloudflare) or `applications/apps/`
+  (cluster infra: reflector, MetalLB, ingress, ArgoCD self-config, Cloudflare) or `applications/apps/`
   (workloads: Plex, Pi-hole, media, Authentik, …). Two app-of-apps Applications —
   `applications/core.yaml` and `applications/apps.yaml` — point at those two directories
   and are applied by the Ansible playbooks (see Provisioning below); everything under
@@ -93,7 +93,6 @@ cd ~/projects/homelab/ansible
 ansible-galaxy collection install -r requirements.yml   # first time / fresh host
 ansible-playbook playbooks/cluster.yml -K   # stage 1: host + k3s + cluster foundation
 ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
-# or run both via: ansible-playbook playbooks/main.yml -K
 ```
 
 - **`playbooks/cluster.yml`** (the "one command" for a fresh host) runs, in order:
@@ -101,13 +100,13 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   joins the group) → `k3s` (installs k3s only, `--disable traefik --disable servicelb`)
   → `kubeconfig` (fetches the cluster kubeconfig to the **control node**, `~/.kube/config`,
   rewriting the API server IP — every later role in this playbook talks to the cluster
-  from here on) → `helm` (helm + helm-diff) → `sealed_secrets` (installs the Sealed
-  Secrets controller via Helm into `kube-system`) → `argocd` (namespace + upstream
-  `install.yaml`) → `cloudflare` (prompts for the tunnel token, reseals it against the
+  from here on) → `helm` (helm + helm-diff) → `argocd` (namespace + upstream
+  `install.yaml`) → `sealed_secrets` (installs the Sealed Secrets controller via Helm
+  into `kube-system`) → `cloudflare` (prompts for the tunnel token, reseals it against the
   live controller, and if it changed commits + pushes just `cloudflare/templates/sealed-token.yaml`;
   if left blank it falls back to the committed sealed secret, or fails if none exists yet)
-  → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys MetalLB,
-  ingress, its own self-config, and Cloudflare (see sync-wave annotations in
+  → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys reflector,
+  MetalLB, ingress, its own self-config, and Cloudflare (see sync-wave annotations in
   `applications/core/*.yaml`).
 - **`playbooks/apps.yml`** (stage 2) runs `secrets` (prompts whether to regenerate
   app sealed secrets — see below) → `argocd_apps` (applies `applications/apps.yaml`;
