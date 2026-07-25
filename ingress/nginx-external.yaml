@@ -14,6 +14,9 @@ spec:
         name: nginx-external
         default: false
       ingressClass: nginx-external
+      service:
+        annotations:
+          metallb.universe.tf/loadBalancerIPs: "10.0.0.151"
       config:
         # Trust forwarded headers
         use-forwarded-headers: "true"

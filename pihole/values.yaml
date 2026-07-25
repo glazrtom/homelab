@@ -13,6 +13,7 @@ volume:
 
 dns:
   loadBalancerIP: 10.0.0.200
+  internalIP: 10.0.0.150
   upstreams: "1.1.1.1;1.0.0.1"
 
 domainPrefix: pihole

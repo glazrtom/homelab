@@ -52,6 +52,8 @@ spec:
               value: "{{ .Values.dns.upstreams }}"
             - name: FTLCONF_dns_listeningMode
               value: "all"
+            - name: FTLCONF_misc_dnsmasq_lines
+              value: "address=/{{ .Values.global.domain.internal.suffix }}/{{ .Values.dns.internalIP }}"
           readinessProbe:
             httpGet:
               path: /admin/login.lp
