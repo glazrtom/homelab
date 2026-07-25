@@ -90,7 +90,7 @@ own role. `ansible.cfg` sets the inventory, so `-i` is never needed:
 
 ```
 cd ~/projects/homelab/ansible
-ansible-galaxy collection install -r requirements.yml   # first time / fresh host
+ansible-galaxy collection install -r requirements.yml --upgrade   # first time / fresh host
 ansible-playbook playbooks/cluster.yml -K   # stage 1: host + k3s + cluster foundation
 ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
 ```

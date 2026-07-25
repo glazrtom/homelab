@@ -3,6 +3,8 @@ kind: ApplicationSet
 metadata:
   name: media
   namespace: argocd
+  labels:
+    homelab/tier: apps
 spec:
   generators:
     - list:
@@ -16,6 +18,8 @@ spec:
   template:
     metadata:
       name: '{{name}}'
+      labels:
+        homelab/tier: apps
     spec:
       project: default
       source:

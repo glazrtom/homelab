@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: core
   namespace: argocd
+  labels:
+    homelab/tier: core
 spec:
   project: default
   source:

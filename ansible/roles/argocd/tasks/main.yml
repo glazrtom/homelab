@@ -1,6 +1,6 @@
 - name: Install ArgoCD
   ansible.builtin.command:
-    cmd: kubectl apply -k "{{ argocd_install_kustomize_url }}"
+    cmd: kubectl apply --server-side --force-conflicts -k "{{ argocd_install_kustomize_url }}"
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
 
@@ -17,3 +17,25 @@
     (argocd_server.resources[0].status.availableReplicas | default(0)) > 0
   retries: 30
   delay: 10
+
+- name: Disable ArgoCD internal TLS
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ path_repo_root }}/argocd/argocd-disable-internal-tls.yaml"
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: argocd_cmd_params
+
+# server.insecure is read into ARGOCD_SERVER_INSECURE via configMapKeyRef, which is only
+# resolved at container start, so argocd-server must be restarted whenever this changes.
+- name: Restart argocd-server to pick up the params ConfigMap
+  ansible.builtin.command: kubectl rollout restart deploy/argocd-server -n {{ argocd_namespace }}
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  when: argocd_cmd_params.changed
+
+- name: Wait for the argocd-server rollout to finish
+  ansible.builtin.command: kubectl rollout status deploy/argocd-server -n {{ argocd_namespace }} --timeout=300s
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  changed_when: false
+  when: argocd_cmd_params.changed

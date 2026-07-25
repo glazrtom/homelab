@@ -4,8 +4,13 @@
   args:
     creates: /usr/local/bin/helm
 
-- name: Install helm-diff plugin
+- name: List installed helm plugins
   become: false
-  ansible.builtin.command: helm plugin install https://github.com/databus23/helm-diff
-  args:
-    creates: "{{ path_home }}/.local/share/helm/plugins/helm-diff"
+  ansible.builtin.command: helm plugin list
+  changed_when: false
+  register: helm_plugins
+
+#- name: Install helm-diff plugin
+#  become: false
+#  ansible.builtin.command: helm plugin install https://github.com/databus23/helm-diff --verify=false
+#  when: "'diff' not in helm_plugins.stdout"

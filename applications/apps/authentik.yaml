@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: authentik
   namespace: argocd
+  labels:
+    homelab/tier: apps
 spec:
   project: default
   source:

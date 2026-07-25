@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: argocd
   namespace: argocd
+  labels:
+    homelab/tier: core
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
