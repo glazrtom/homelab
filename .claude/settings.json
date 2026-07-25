@@ -10,7 +10,8 @@
         "~/.kube/cache",
         "~/Library/Caches/helm",
         "~/.config/helm",
-        "~/.cache/helm"
+        "~/.cache/helm",
+        "~/.ansible"
       ],
       "denyWrite": [
         "~/.kube/config",
