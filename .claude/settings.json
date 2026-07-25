@@ -1,3 +1,86 @@
 {
-  "plansDirectory": ".claude/plans"
+  "plansDirectory": ".claude/plans",
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": true,
+
+    "filesystem": {
+      "allowWrite": [
+        "~/.kube/cache",
+        "~/Library/Caches/helm",
+        "~/.config/helm",
+        "~/.cache/helm"
+      ],
+      "denyWrite": [
+        "~/.kube/config",
+        "~/.ssh"
+      ],
+      "denyRead": [
+        "./*/secrets/**"
+      ]
+    },
+
+    "network": {
+      "allowedDomains": [
+        "10.0.0.1",
+        "github.com",
+        "raw.githubusercontent.com",
+        "objects.githubusercontent.com",
+        "ghcr.io",
+        "bitnami.github.io",
+        "charts.goauthentik.io",
+        "metallb.github.io",
+        "emberstack.github.io",
+        "kubernetes.github.io",
+        "cloudflare.github.io",
+        "get.k3s.io"
+      ]
+    },
+
+    "credentials": {
+      "files": [
+        { "path": "~/.ssh", "mode": "deny" },
+        { "path": "~/.aws", "mode": "deny" },
+        { "path": "~/.config/gh", "mode": "deny" }
+      ]
+    },
+
+    "excludedCommands": [
+      "docker *",
+      "open *",
+      "osascript *"
+    ]
+  },
+
+  "permissions": {
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(kubectl apply*)",
+      "Bash(kubectl patch*)",
+      "Bash(kubectl edit*)",
+      "Bash(kubectl rollout*)",
+      "Bash(kubectl scale*)",
+      "Bash(kubectl create*)",
+      "Bash(kubectl annotate*)",
+      "Bash(helm install*)",
+      "Bash(helm upgrade*)",
+      "Bash(helm rollback*)",
+      "Bash(kubeseal*)",
+      "Bash(ansible-playbook*)",
+      "Bash(ansible *)",
+      "Bash(ssh *)",
+      "Bash(cloudflared *)"
+    ],
+    "deny": [
+      "Bash(kubectl delete*)",
+      "Bash(helm uninstall*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(sudo *)",
+      "Bash(*/generate-secret.sh*)",
+      "Read(./*/secrets/**)"
+    ]
+  }
 }
