@@ -16,6 +16,10 @@ spec:
       labels:
         app: pihole
     spec:
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1
       volumes:
         - name: pihole-config
           persistentVolumeClaim:
@@ -26,11 +30,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 53
-              hostPort: 53
               name: dns-udp
               protocol: UDP
             - containerPort: 53
-              hostPort: 53
               name: dns-tcp
               protocol: TCP
             - containerPort: 80
@@ -46,3 +48,19 @@ spec:
               value: "{{ .Values.global.user.uid }}"
             - name: PIHOLE_GID
               value: "{{ .Values.global.user.gid }}"
+            - name: FTLCONF_dns_upstreams
+              value: "{{ .Values.dns.upstreams }}"
+            - name: FTLCONF_dns_listeningMode
+              value: "all"
+          readinessProbe:
+            httpGet:
+              path: /admin/login.lp
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /admin/login.lp
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20

@@ -21,10 +21,12 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     metallb.universe.tf/allow-shared-ip: "pihole"
+    metallb.universe.tf/loadBalancerIPs: "{{ .Values.dns.loadBalancerIP }}"
 spec:
   selector:
     app: pihole
   type: LoadBalancer
+  externalTrafficPolicy: Local
   ports:
     - name: dns-udp
       port: 53
@@ -38,10 +40,12 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     metallb.universe.tf/allow-shared-ip: "pihole"
+    metallb.universe.tf/loadBalancerIPs: "{{ .Values.dns.loadBalancerIP }}"
 spec:
   selector:
     app: pihole
   type: LoadBalancer
+  externalTrafficPolicy: Local
   ports:
     - name: dns-tcp
       port: 53

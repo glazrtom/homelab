@@ -3,12 +3,16 @@ replicaCount: 1
 
 image:
   repository: pihole/pihole
-  tag: latest
+  tag: "2026.07.2"
   pullPolicy: IfNotPresent
 
 volume:
   config:
-    size: 1Gi
-    path: /mnt/storage/config/pihole
+    size: 2Gi
+    storageClassName: longhorn
+
+dns:
+  loadBalancerIP: 10.0.0.200
+  upstreams: "1.1.1.1;1.0.0.1"
 
 domainPrefix: pihole
