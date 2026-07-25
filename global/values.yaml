@@ -1,7 +1,7 @@
 global:
   user:
-    uid: "1002"
-    gid: "1002"
+    uid: "1001"
+    gid: "1001"
 
   timezone: "Europe/Prague"
 
@@ -9,6 +9,6 @@ global:
     internal:
       suffix: "internal"
     public:
-      suffix: "glazrtom.fun"
+      suffix: "glazrtom.cz"
 
   revisionHistoryLimit: 1
