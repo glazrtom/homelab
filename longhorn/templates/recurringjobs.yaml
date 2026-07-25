@@ -1,0 +1,46 @@
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-hourly
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  cron: "0 * * * *"
+  task: snapshot
+  groups:
+    - protected
+  retain: 8
+  concurrency: 1
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-daily
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  cron: "0 2 * * *"
+  task: snapshot
+  groups:
+    - protected
+  retain: 7
+  concurrency: 1
+{{- if .Values.backup.enabled }}
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: backup-daily
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  cron: "0 3 * * *"
+  task: backup
+  groups:
+    - protected
+  retain: 7
+  concurrency: 1
+{{- end }}

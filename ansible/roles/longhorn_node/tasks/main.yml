@@ -1,0 +1,56 @@
+- name: Install Longhorn node prerequisites
+  become: true
+  ansible.builtin.apt:
+    name: "{{ longhorn_node_packages }}"
+    update_cache: yes
+
+- name: Ensure iscsid is enabled and running
+  become: true
+  ansible.builtin.systemd:
+    name: iscsid
+    state: started
+    enabled: yes
+
+- name: Persist required kernel modules across reboots
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/longhorn.conf
+    content: |
+      {% for module in longhorn_node_kernel_modules %}
+      {{ module }}
+      {% endfor %}
+    mode: "0644"
+
+- name: Load required kernel modules now
+  become: true
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ longhorn_node_kernel_modules }}"
+
+- name: Create the Longhorn data directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ longhorn_data_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether multipathd is installed
+  ansible.builtin.stat:
+    path: /etc/multipath.conf
+  register: multipath_conf
+
+- name: Blacklist local block devices from multipath
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/multipath.conf
+    create: yes
+    mode: "0644"
+    block: |
+      blacklist {
+          devnode "^sd[a-z0-9]+"
+      }
+  when: multipath_conf.stat.exists
+  notify: restart multipathd

@@ -1,1 +1,1 @@
-k3s_install_exec: "server --disable traefik --disable servicelb"
+k3s_install_exec: "server --disable traefik --disable servicelb --disable local-storage"

@@ -1,0 +1,11 @@
+longhorn_node_packages:
+  - open-iscsi
+  - nfs-common
+  - cryptsetup
+  - dmsetup
+
+longhorn_node_kernel_modules:
+  - iscsi_tcp
+  - dm_crypt
+
+longhorn_data_path: /var/lib/longhorn

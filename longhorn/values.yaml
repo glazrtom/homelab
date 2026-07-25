@@ -1,0 +1,71 @@
+# --- local values, consumed by our own templates -------------------------
+namespace: longhorn-system
+domainPrefix: longhorn
+backup:
+  enabled: false # gates the backup-daily RecurringJob; no backup target yet
+bulkClassName: longhorn-bulk
+
+# --- upstream subchart overrides ------------------------------------------
+# Most of these exist only to undo the upstream chart's 3-node assumptions.
+longhorn:
+  defaultSettings:
+    # Replicas per volume when the StorageClass doesn't specify. Upstream: 3.
+    # On one node, 3 replicas can never satisfy anti-affinity, so the volume
+    # would sit Degraded forever.
+    defaultReplicaCount: 1
+
+    # Where replica data lives on the host disk. Same as upstream default;
+    # stated explicitly because ansible/roles/longhorn_node pre-creates it.
+    defaultDataPath: /var/lib/longhorn
+
+    # % of the disk Longhorn refuses to touch, left for the OS/k3s/images.
+    # Upstream: 25. Lowered: actual OS+k3s usage is ~7.5GB on a 233GB disk,
+    # so 15% (~35GB) is a roomier multiple of current usage without locking
+    # away space Longhorn will never use.
+    storageReservedPercentageForDefaultDisk: 15
+
+    # Longhorn stops scheduling new replicas once free space drops below
+    # this. Upstream default was 25; lowered alongside the reserve above -
+    # crossing it only blocks new scheduling, it isn't destructive.
+    storageMinimalAvailablePercentage: 15
+
+    # Volumes are thin-provisioned; this caps the SUM of requested sizes
+    # against usable space. 100 = no overcommit. Upstream default.
+    storageOverProvisioningPercentage: 100
+
+  persistence:
+    # Creates the `longhorn` StorageClass AND marks it cluster-default.
+    defaultClass: true
+
+    # numberOfReplicas baked into that StorageClass. A class parameter
+    # overrides defaultReplicaCount above, so both must be set to 1.
+    defaultClassReplicaCount: 1
+
+    # Data survives PVC deletion (including an accidental ArgoCD prune).
+    # Upstream default: Delete.
+    reclaimPolicy: Retain
+
+    defaultFsType: ext4
+
+    # The selective-backup mechanism: stamps the protected-group label onto
+    # every volume this class provisions, so the RecurringJobs below pick
+    # them up automatically.
+    recurringJobSelector:
+      enable: true
+      jobList: '[{"name":"protected","isGroup":true}]'
+
+  longhornUI:
+    replicas: 1 # upstream default is 2; pointless on one node
+
+  csi:
+    # The four CSI sidecars each default to 3 replicas for HA. On one node
+    # the extras are idle leader-election losers.
+    attacherReplicaCount: 1
+    provisionerReplicaCount: 1
+    resizerReplicaCount: 1
+    snapshotterReplicaCount: 1
+
+  preUpgradeChecker:
+    # Upstream runs a pre-upgrade validation Job. Jobs are immutable, so
+    # ArgoCD selfHeal fights it on every sync.
+    jobEnabled: false

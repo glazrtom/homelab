@@ -2,6 +2,7 @@
   hosts: server
   roles:
     - server_base
+    - longhorn_node
     - k3s
 
 - name: Fetch the cluster kubeconfig to the control node
