@@ -12,3 +12,8 @@ global:
       suffix: "glazrtom.cz"
 
   revisionHistoryLimit: 1
+
+  sharedMedia:
+    name: shared-media
+    size: 100Gi              # PV/PVC capacity
+    sizeBytes: "107374182400" # same value in bytes, for the Longhorn Volume CR

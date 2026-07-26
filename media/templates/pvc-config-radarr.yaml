@@ -1,27 +1,14 @@
 {{- if .Values.defineGlobalPvc.enabled }}
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: config-radarr-pv
-spec:
-  capacity:
-    storage: {{ .Values.radarr.volume.config.size }}
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: {{ .Values.radarr.volume.config.path }}
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: config-radarr-pvc
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Values.global.namespace }}
 spec:
+  storageClassName: {{ .Values.radarr.volume.config.storageClassName }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.radarr.volume.config.size }}
-  volumeName: config-radarr-pv
-  storageClassName: ""
 {{- end }}

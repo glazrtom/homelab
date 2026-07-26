@@ -4,23 +4,20 @@ namespace: transmission
 image:
   repository: haugene/transmission-openvpn
   pullPolicy: IfNotPresent
-  tag: latest
+  tag: "5.4.1"
 
 env:
   openvpnProvider: "WINDSCRIBE"
   openvpnConfig: "Prague-Vltava-udp"
   webUI: "flood-for-transmission"
-  localNetwork: "10.42.0.0/16"
+  localNetwork: "10.42.0.0/15"
 
 domainPrefix: transmission
 
 volumes:
   config:
     size: 1Gi
-    path: /mnt/storage/config/transmission
-  media:
-    size: 100Gi
-    path: /mnt/storage/media
+    storageClassName: longhorn
 
 secrets:
   name: windscribe-auth

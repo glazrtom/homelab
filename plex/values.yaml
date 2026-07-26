@@ -13,8 +13,5 @@ domainPrefix: plex
 
 volumes:
   config:
-    size: 1Gi
-    path: /mnt/storage/config/plex
-  media:
-    size: 100Gi
-    path: /mnt/storage/media
+    size: 10Gi
+    storageClassName: longhorn

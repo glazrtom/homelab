@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 PLAIN=secrets/windscribe.yaml
-SEALED=templates/sealed-windscribe.yaml
+SEALED=windscribe-sealed.yaml
 
 mkdir -p secrets
 chmod go-rwx secrets
@@ -22,15 +22,15 @@ if [ ! -f "$PLAIN" ]; then
   fi
 
   kubectl create secret generic windscribe-auth \
-    --namespace transmission \
+    --namespace default \
     --from-literal=username="$USERNAME" \
     --from-literal=password="$PASSWORD" \
     --dry-run=client -o yaml \
   | kubectl annotate --local -f - \
      reflector.v1.k8s.emberstack.com/reflection-allowed=true \
-     reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces=media \
+     reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces=media,transmission \
      reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true \
-     reflector.v1.k8s.emberstack.com/reflection-auto-namespaces=media \
+     reflector.v1.k8s.emberstack.com/reflection-auto-namespaces=media,transmission \
      --output yaml > "$PLAIN"
 
   chmod go-rwx "$PLAIN"

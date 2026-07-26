@@ -14,6 +14,15 @@ spec:
       labels:
         app: transmission
     spec:
+      initContainers:
+        - name: init-perms
+          image: busybox:1.37
+          command: ["sh", "-c", "chown {{ .Values.global.user.uid }}:{{ .Values.global.user.gid }} /data"]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: media
+              mountPath: /data
       containers:
         - name: transmission
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

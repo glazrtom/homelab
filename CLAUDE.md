@@ -27,9 +27,10 @@ Makefile/Taskfile, and no build step.
 ## Global values (shared config)
 
 `global/values.yaml` holds cluster-wide values consumed by charts:
-`global.user` (uid/gid 1002), `global.timezone` (Europe/Prague), and the domain
+`global.user` (uid/gid 1001), `global.timezone` (Europe/Prague), the domain
 suffixes `global.domain.internal.suffix: internal` and
-`global.domain.public.suffix: glazrtom.fun`.
+`global.domain.public.suffix: glazrtom.cz`, and `global.sharedMedia` (name/size of the
+shared Longhorn media volume — see Storage below).
 
 Charts that need these values layer them via the ArgoCD `helm.valueFiles` list, e.g.
 `authentik.yaml` and the media ApplicationSet list `../global/values.yaml` first, then
@@ -59,22 +60,40 @@ Authentik (SSO/IdP) is deployed from `authentik_helm/` (official upstream chart,
 bundled postgres + redis). `authentik/` is the older custom chart being migrated away
 from — prefer `authentik_helm/`.
 
+## Storage
+
+Bulk media and per-app config both live on **Longhorn** (cluster-default StorageClass
+`longhorn`, plus `longhorn-bulk` for statically-bound volumes — see `longhorn/`). The
+media library is one Longhorn **RWX** volume (`longhorn/templates/volume-shared-media.yaml`,
+sized via `global.sharedMedia`), genuinely shared across the `media`, `transmission` and
+`plex` namespaces: each namespace has its own static `PersistentVolume` pointing at the
+same `csi.volumeHandle`, bound to that namespace's own PVC via `claimRef`. Config volumes
+are plain dynamically-provisioned `longhorn` PVCs, one per app, following the
+`pihole/templates/pvc-config.yaml` pattern. Resizing the shared volume is a two-line change
+in `global/values.yaml` (`size` and `sizeBytes`, kept in sync); resizing a config PVC is a
+one-line change to that app's `volume.config.size`. There is no host-path storage left in
+any chart.
+
 ## Secrets
 
 **Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
-secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`).
-Each service's `generate-secret.sh` (in `authentik/`, `authentik_helm/`, `base/`,
-`cloudflare/`, `transmission/`) is **idempotent**: it reuses the plaintext already
-sitting in its git-ignored `secrets/` dir if present, only generating (random values)
-or prompting (human-supplied values, e.g. the GHCR PAT) when that plaintext is
-missing, then runs `kubeseal` to produce the committed sealed file. Sealed secrets are
-encrypted against one specific cluster's key, so re-run these after provisioning a new
-cluster — `ansible/roles/secrets` does this automatically (see Provisioning below).
-`**/secrets/` is git-ignored at the repo root; never commit plaintext from it. Some
-bootstrap secrets (TLS, Tailscale) are instead created imperatively — see `init.sh`.
+secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`,
+`base/windscribe-sealed.yaml`). Each service's `generate-*-secret.sh` (in `authentik/`,
+`authentik_helm/`, `base/`, `cloudflare/`) is **idempotent**: it reuses the plaintext
+already sitting in its git-ignored `secrets/` dir if present, only generating (random
+values) or prompting (human-supplied values, e.g. the GHCR PAT or Windscribe creds) when
+that plaintext is missing, then runs `kubeseal` to produce the committed sealed file.
+Sealed secrets are encrypted against one specific cluster's key, so re-run these after
+provisioning a new cluster — `ansible/roles/secrets` does this automatically (see
+Provisioning below). `**/secrets/` is git-ignored at the repo root; never commit plaintext
+from it. Some bootstrap secrets (TLS, Tailscale) are instead created imperatively — see
+`init.sh`.
 
 `base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
-(emberstack), which mirrors it into other namespaces.
+(emberstack), which mirrors it into other namespaces. `base/generate-windscribe-secret.sh`
+does the same for the `windscribe-auth` VPN credential (namespace `default`), mirroring it
+into `media` (prowlarr's gluetun sidecar) and `transmission` — neither of those charts owns
+the secret itself, they only reference `windscribe-auth` by name.
 
 ## Bootstrap
 
@@ -108,16 +127,17 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys reflector,
   MetalLB, ingress, its own self-config, and Cloudflare (see sync-wave annotations in
   `applications/core/*.yaml`).
-- **`playbooks/apps.yml`** (stage 2) runs `secrets` (prompts whether to regenerate
-  app sealed secrets — see below) → `argocd_apps` (applies `applications/apps.yaml`;
-  ArgoCD then deploys every workload under `applications/apps/`) → a post-task that
-  polls the cluster for each secret and warns if one never decrypted (stale key).
-- The `secrets` role, once you answer yes, loops over the `generate-secret.sh` of
-  every app in its `secrets_items` list (`authentik/`, `authentik_helm/`, `base/`,
-  `transmission/`), prompting only for the human-supplied ones that have no local
-  plaintext yet (leave blank to skip that one and keep its committed sealed file),
-  then commits and pushes just the sealed files that changed. Run it standalone via
-  `playbooks/secrets.yml` without redeploying anything.
+- **`playbooks/apps.yml`** (stage 2) runs `secrets` (always resealing — see below) →
+  `argocd_apps` (applies `applications/apps.yaml`; ArgoCD then deploys every workload
+  under `applications/apps/`) → a post-task that polls the cluster for each secret and
+  warns if one never decrypted (stale key).
+- The `secrets` role always runs, looping over the generate scripts of every app in its
+  `secrets_items` list (`authentik/`, `authentik_helm/`, `base/` — GHCR and Windscribe).
+  It only prompts for a script's human-supplied values when that script has no local
+  plaintext yet; if the plaintext is already there, it's assumed correct and just
+  resealed as-is, no prompt (leave a prompt blank to skip that one and keep its
+  committed sealed file instead). It then commits and pushes just the sealed files that
+  changed. Run it standalone via `playbooks/secrets.yml` without redeploying anything.
 - Because `helm`/`sealed_secrets`/`argocd`/`cloudflare`/`argocd_apps`/`secrets` run on
   the **control node** (not the server) against the fetched kubeconfig, that machine
   needs `kubectl`, `helm`, `kubeseal`, and `git` (with push access to this repo)

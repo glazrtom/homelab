@@ -5,11 +5,6 @@ global:
 defineGlobalPvc:
   enabled: false
 
-volume:
-  media:
-    size: 100Gi
-    path: /mnt/storage/media
-
 prowlarr:
   enabled: false
   image: linuxserver/prowlarr
@@ -17,7 +12,7 @@ prowlarr:
   volume:
     config:
       size: 1Gi
-      path: /mnt/storage/config/prowlarr
+      storageClassName: longhorn
   vpn:
     image: qmcgaw/gluetun
     env:
@@ -34,13 +29,10 @@ radarr:
   enabled: false
   image: linuxserver/radarr
   tag: latest
-  configPath: /mnt/storage/config/radarr
-  mediaPath: /mnt/storage/media
-  mediaMountPath: /movies
   volume:
     config:
       size: 1Gi
-      path: /mnt/storage/config/radarr
+      storageClassName: longhorn
 
 sonarr:
   enabled: false
@@ -48,13 +40,10 @@ sonarr:
   image: linuxserver/sonarr
   tag: latest
   port: 8989
-  configPath: /mnt/storage/config/sonarr
-  mediaPath: /mnt/storage/media
-  mediaMountPath: /series
   volume:
     config:
       size: 1Gi
-      path: /mnt/storage/config/sonarr
+      storageClassName: longhorn
 
 readarr:
   enabled: false
@@ -63,8 +52,7 @@ readarr:
   image: lscr.io/linuxserver/readarr
   tag: develop
   port: 8787
-  configPath: /mnt/storage/config/readarr
   volume:
     config:
       size: 1Gi
-      path: /mnt/storage/config/readarr
+      storageClassName: longhorn

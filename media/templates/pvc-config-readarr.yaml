@@ -1,27 +1,14 @@
 {{- if .Values.defineGlobalPvc.enabled }}
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: config-readarr-books-pv
-spec:
-  capacity:
-    storage: {{ .Values.readarr.volume.config.size }}
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: {{ .Values.readarr.volume.config.path }}
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: config-readarr-books-pvc
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Values.global.namespace }}
 spec:
+  storageClassName: {{ .Values.readarr.volume.config.storageClassName }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.readarr.volume.config.size }}
-  volumeName: config-readarr-books-pv
-  storageClassName: ""
 {{- end }}

@@ -1,0 +1,11 @@
+apiVersion: longhorn.io/v1beta2
+kind: Volume
+metadata:
+  name: {{ .Values.global.sharedMedia.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  size: "{{ .Values.global.sharedMedia.sizeBytes }}"
+  numberOfReplicas: {{ .Values.longhorn.defaultSettings.defaultReplicaCount }}
+  accessMode: rwx
+  frontend: blockdev
+  staleReplicaTimeout: 30

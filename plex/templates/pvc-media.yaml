@@ -1,14 +1,26 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: media-pv
+  name: shared-media-plex-pv
 spec:
   capacity:
-    storage: {{ .Values.volumes.media.size }}
+    storage: {{ .Values.global.sharedMedia.size }}
   accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: {{ .Values.volumes.media.path }}
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn-bulk
+  volumeMode: Filesystem
+  claimRef:
+    namespace: {{ .Values.namespace }}
+    name: media-pvc
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeHandle: {{ .Values.global.sharedMedia.name }}
+    volumeAttributes:
+      numberOfReplicas: "1"
+      staleReplicaTimeout: "30"
+      share: "true"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -17,9 +29,9 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
-      storage: {{ .Values.volumes.media.size }}
-  volumeName: media-pv
-  storageClassName: ""
+      storage: {{ .Values.global.sharedMedia.size }}
+  volumeName: shared-media-plex-pv
+  storageClassName: longhorn-bulk
