@@ -28,12 +28,17 @@ prowlarr:
     env:
       VPN_SERVICE_PROVIDER: windscribe
       VPN_TYPE: openvpn
-      OPENVPN_SECRET_NAME: windscribe-auth
-      OPENVPN_SECRET_USER_KEY: username
-      OPENVPN_SECRET_PASSWORD_KEY: password
       SERVER_REGIONS: Czech Republic
       DNS_KEEP_NAMESERVER: "on"
+      FIREWALL: "on"
       FIREWALL_OUTBOUND_SUBNETS: 10.42.0.0/15
+    secretEnv:
+      OPENVPN_USER:
+        name: windscribe-auth
+        key: username
+      OPENVPN_PASSWORD:
+        name: windscribe-auth
+        key: password
 
 radarr:
   enabled: false

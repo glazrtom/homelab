@@ -17,14 +17,16 @@ spec:
       labels:
         {{- include "lib.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.initContainers }}
+      {{- if or .Values.sidecarsTemplate .Values.initContainers }}
       initContainers:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      containers:
         {{- with .Values.sidecarsTemplate }}
         {{- include . $ | nindent 8 }}
         {{- end }}
+        {{- with .Values.initContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      containers:
         - name: {{ .Values.app.name }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy | default .Values.global.imagePullPolicy }}

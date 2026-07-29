@@ -25,4 +25,4 @@ global:
       - downloads/complete
       - downloads/incomplete
       - movies
-      - tv
+      - series

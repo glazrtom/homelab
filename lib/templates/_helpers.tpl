@@ -47,6 +47,21 @@ app: {{ include "lib.fullname" . }}
 {{- end }}
 {{- end -}}
 
+{{/* Env list from a plain map plus a map of secretKeyRef sources: {env: {...}, secretEnv: {NAME: {name, key}}}. */}}
+{{- define "lib.env" -}}
+{{- range $k, $v := .env }}
+- name: {{ $k }}
+  value: {{ $v | quote }}
+{{- end }}
+{{- range $k, $s := .secretEnv }}
+- name: {{ $k }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $s.name }}
+      key: {{ $s.key }}
+{{- end }}
+{{- end -}}
+
 {{- define "lib.volumeMounts" -}}
 {{- range $name, $v := .Values.volumes }}
 - name: {{ $name }}
