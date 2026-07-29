@@ -4,7 +4,7 @@ namespace: transmission
 image:
   repository: haugene/transmission-openvpn
   pullPolicy: IfNotPresent
-  tag: "5.4.1"
+  tag: "5.4.2"
 
 env:
   openvpnProvider: "WINDSCRIBE"
