@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: init-perms
-          image: busybox:1.37
+          image: busybox:1.38
           command:
             - sh
             - -c
