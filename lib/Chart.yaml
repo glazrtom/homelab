@@ -1,0 +1,5 @@
+apiVersion: v2
+name: lib
+description: Shared templates for homelab app charts
+type: library
+version: 0.1.0

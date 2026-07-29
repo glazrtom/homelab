@@ -1,18 +1,1 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: sonarr-ingress-{{ .Values.global.instanceName }}
-  namespace: {{ .Values.global.namespace }}
-spec:
-  ingressClassName: nginx-internal
-  rules:
-    - host: {{ .Values.domainPrefix }}.{{ .Values.global.domain.internal.suffix }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sonarr-{{ .Values.global.instanceName }}
-                port:
-                  number: 8989
+{{ include "lib.ingress" . }}

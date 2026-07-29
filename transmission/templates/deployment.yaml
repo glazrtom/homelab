@@ -17,12 +17,17 @@ spec:
       initContainers:
         - name: init-perms
           image: busybox:1.37
-          command: ["sh", "-c", "chown {{ .Values.global.user.uid }}:{{ .Values.global.user.gid }} /data"]
+          command:
+            - sh
+            - -c
+            - >-
+              mkdir -p {{ range .Values.global.sharedMedia.dirs }}{{ $.Values.global.sharedMedia.mountPath }}/{{ . }} {{ end }}&&
+              chown -R {{ .Values.global.user.uid }}:{{ .Values.global.user.gid }} {{ .Values.global.sharedMedia.mountPath }}
           securityContext:
             runAsUser: 0
           volumeMounts:
             - name: media
-              mountPath: /data
+              mountPath: {{ .Values.global.sharedMedia.mountPath }}
       containers:
         - name: transmission
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -52,6 +57,10 @@ spec:
                   key: {{ .Values.secrets.passwordKey }}
             - name: TRANSMISSION_WEB_UI
               value: "{{ .Values.env.webUI }}"
+            - name: TRANSMISSION_DOWNLOAD_DIR
+              value: "{{ .Values.global.sharedMedia.mountPath }}/downloads/complete"
+            - name: TRANSMISSION_INCOMPLETE_DIR
+              value: "{{ .Values.global.sharedMedia.mountPath }}/downloads/incomplete"
             - name: LOCAL_NETWORK
               value: "{{ .Values.env.localNetwork }}"
             - name: TZ
@@ -60,7 +69,7 @@ spec:
             - name: config
               mountPath: /config
             - name: media
-              mountPath: /data
+              mountPath: {{ .Values.global.sharedMedia.mountPath }}
       volumes:
         - name: config
           persistentVolumeClaim:

@@ -1,11 +1,1 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: sonarr-{{ .Values.global.instanceName }}
-  namespace: {{ .Values.global.namespace }}
-spec:
-  selector:
-    app: sonarr-{{ .Values.global.instanceName }}
-  ports:
-    - port: 8989
-      targetPort: 8989
+{{ include "lib.service" . }}

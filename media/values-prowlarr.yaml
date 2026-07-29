@@ -3,4 +3,5 @@ global:
 
 prowlarr:
   enabled: true
-  domainPrefix: prowlarr
+  app:
+    domainPrefix: prowlarr

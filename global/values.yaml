@@ -17,3 +17,12 @@ global:
     name: shared-media
     size: 100Gi              # PV/PVC capacity
     sizeBytes: "107374182400" # same value in bytes, for the Longhorn Volume CR
+
+    # Every consumer mounts the volume root here, so a path means the same thing in
+    # transmission, the *arr apps and Plex/Jellyfin - no remote path mapping needed.
+    mountPath: /media
+    dirs:
+      - downloads/complete
+      - downloads/incomplete
+      - movies
+      - tv

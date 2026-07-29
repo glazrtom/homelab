@@ -3,8 +3,10 @@ global:
 
 radarr:
   enabled: true
-  domainPrefix: radarr
+  app:
+    domainPrefix: radarr
 
 sonarr:
   enabled: true
-  domainPrefix: sonarr
+  app:
+    domainPrefix: sonarr

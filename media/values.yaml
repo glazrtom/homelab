@@ -7,12 +7,22 @@ defineGlobalPvc:
 
 prowlarr:
   enabled: false
-  image: linuxserver/prowlarr
-  tag: latest
-  volume:
+  app:
+    name: prowlarr
+    port: 9696
+  image:
+    repository: linuxserver/prowlarr
+    tag: "2.5.2"
+  ingress:
+    enabled: true
+    external: false
+  volumes:
     config:
+      create: true
       size: 1Gi
       storageClassName: longhorn
+      mountPath: /config
+  sidecarsTemplate: prowlarr.vpnContainer
   vpn:
     image: qmcgaw/gluetun
     env:
@@ -27,32 +37,42 @@ prowlarr:
 
 radarr:
   enabled: false
-  image: linuxserver/radarr
-  tag: latest
-  volume:
+  app:
+    name: radarr
+    port: 7878
+  image:
+    repository: linuxserver/radarr
+    tag: "6.3.0"
+  ingress:
+    enabled: true
+    external: false
+  volumes:
     config:
+      create: true
       size: 1Gi
       storageClassName: longhorn
+      mountPath: /config
+    media:
+      claimName: media-pvc
+      mountPath: /media
 
 sonarr:
   enabled: false
-  hostname: sonarr.internal
-  image: linuxserver/sonarr
-  tag: latest
-  port: 8989
-  volume:
+  app:
+    name: sonarr
+    port: 8989
+  image:
+    repository: linuxserver/sonarr
+    tag: "4.0.19"
+  ingress:
+    enabled: true
+    external: false
+  volumes:
     config:
+      create: true
       size: 1Gi
       storageClassName: longhorn
-
-readarr:
-  enabled: false
-  name: readarr-books
-  hostname: readarr.internal
-  image: lscr.io/linuxserver/readarr
-  tag: develop
-  port: 8787
-  volume:
-    config:
-      size: 1Gi
-      storageClassName: longhorn
+      mountPath: /config
+    media:
+      claimName: media-pvc
+      mountPath: /media
