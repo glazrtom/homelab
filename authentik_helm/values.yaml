@@ -1,5 +1,12 @@
 namespace: authentik
-domainPrefix: authentik
+
+app:
+  name: authentik
+  domainPrefix: authentik
+
+service:
+  name: authentik
+  port: 80
 
 authentik:
   global:

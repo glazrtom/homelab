@@ -1,19 +1,64 @@
 namespace: pihole
 replicaCount: 1
 
+app:
+  name: pihole
+  domainPrefix: pihole
+  port: 80
+  uidEnv: PIHOLE_UID
+  gidEnv: PIHOLE_GID
+  ports:
+    - containerPort: 53
+      name: dns-udp
+      protocol: UDP
+    - containerPort: 53
+      name: dns-tcp
+      protocol: TCP
+    - containerPort: 80
+      name: http
+      protocol: TCP
+
 image:
   repository: pihole/pihole
   tag: "2026.07.2"
   pullPolicy: IfNotPresent
 
-volume:
+service:
+  name: pihole-web
+  port: 80
+
+strategy:
+  type: Recreate
+
+dnsPolicy: None
+dnsConfig:
+  nameservers:
+    - 1.1.1.1
+
+extraEnvTemplate: pihole.env
+
+probes:
+  readinessProbe:
+    httpGet:
+      path: /admin/login.lp
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /admin/login.lp
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 20
+
+volumes:
   config:
+    create: true
     size: 2Gi
     storageClassName: longhorn
+    mountPath: /etc/pihole
 
 dns:
   loadBalancerIP: 10.0.0.200
   internalIP: 10.0.0.150
   upstreams: "1.1.1.1;1.0.0.1"
-
-domainPrefix: pihole

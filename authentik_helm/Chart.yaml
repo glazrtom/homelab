@@ -3,6 +3,9 @@ name: authentik
 description: A Helm chart for Authentik
 version: 0.1.0
 dependencies:
+  - name: lib
+    version: 0.1.0
+    repository: file://../lib
   - name: authentik
     version: 2025.6.2
     repository: https://charts.goauthentik.io/

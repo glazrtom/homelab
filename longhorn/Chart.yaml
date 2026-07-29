@@ -2,6 +2,9 @@ apiVersion: v2
 name: longhorn
 version: 0.1.0
 dependencies:
+  - name: lib
+    version: 0.1.0
+    repository: file://../lib
   - name: longhorn
     # Verify against https://charts.longhorn.io before bumping.
     version: 1.12.0

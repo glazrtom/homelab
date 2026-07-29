@@ -1,12 +1,1 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: pihole-config-pvc
-  namespace: {{ .Values.namespace }}
-spec:
-  storageClassName: {{ .Values.volume.config.storageClassName }}
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.volume.config.size }}
+{{ include "lib.pvc" . }}

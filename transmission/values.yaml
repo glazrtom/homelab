@@ -1,23 +1,43 @@
 replicaCount: 1
 namespace: transmission
 
+app:
+  name: transmission
+  port: 9091
+  domainPrefix: transmission
+
 image:
   repository: haugene/transmission-openvpn
   pullPolicy: IfNotPresent
   tag: "5.4.1"
 
-env:
-  openvpnProvider: "WINDSCRIBE"
-  openvpnConfig: "Prague-Vltava-udp"
-  webUI: "flood-for-transmission"
-  localNetwork: "10.42.0.0/15"
+extraEnv:
+  - name: OPENVPN_PROVIDER
+    value: "WINDSCRIBE"
+  - name: OPENVPN_CONFIG
+    value: "Prague-Vltava-udp"
+  - name: TRANSMISSION_WEB_UI
+    value: "flood-for-transmission"
+  - name: LOCAL_NETWORK
+    value: "10.42.0.0/15"
 
-domainPrefix: transmission
+extraEnvTemplate: transmission.env
+sidecarsTemplate: transmission.initPerms
+
+securityContext:
+  capabilities:
+    add:
+      - NET_ADMIN
 
 volumes:
   config:
+    create: true
     size: 1Gi
     storageClassName: longhorn
+    mountPath: /config
+  media:
+    claimName: transmission-media-pvc
+    mountPath: /media
 
 secrets:
   name: windscribe-auth

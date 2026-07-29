@@ -1,6 +1,14 @@
 # --- local values, consumed by our own templates -------------------------
 namespace: longhorn-system
-domainPrefix: longhorn
+
+app:
+  name: longhorn
+  domainPrefix: longhorn
+
+service:
+  name: longhorn-frontend
+  port: 80
+
 backup:
   enabled: false # gates the backup-daily RecurringJob; no backup target yet
 bulkClassName: longhorn-bulk
