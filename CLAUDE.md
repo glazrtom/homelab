@@ -129,8 +129,7 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   `applications/core/*.yaml`).
 - **`playbooks/apps.yml`** (stage 2) runs `secrets` (always resealing — see below) →
   `argocd_apps` (applies `applications/apps.yaml`; ArgoCD then deploys every workload
-  under `applications/apps/`) → a post-task that polls the cluster for each secret and
-  warns if one never decrypted (stale key).
+  under `applications/apps/`).
 - The `secrets` role always runs, looping over the generate scripts of every app in its
   `secrets_items` list (`authentik/`, `authentik_helm/`, `base/` — GHCR and Windscribe).
   It only prompts for a script's human-supplied values when that script has no local

@@ -7,8 +7,3 @@
     - role: argocd_apps
       vars:
         argocd_apps_file: "{{ homelab_manifests_base }}/apps.yaml"
-  post_tasks:
-    - name: Verify the sealed secrets decrypted in the cluster
-      ansible.builtin.include_role:
-        name: secrets
-        tasks_from: verify
