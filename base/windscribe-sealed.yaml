@@ -1,0 +1,19 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: windscribe-auth
+  namespace: default
+spec:
+  encryptedData:
+    password: AgAK7xw8sp3R7T6J2NURzIxe1iZRLGqwIc1rR03L28GKtfza5Gl9+qKiISNdOpwkTCrBF8AnD7Xb8cA3gEe3ZRRXWWCYyvNecBcvQ5ID4607B5mtmNXT73gViyLChXOUisVYVbSphg4m2GXIThvKEQTmpHRswd8avnpMcJimPe0HdLy/5rM4HT7faVyOQIZH8Sr4dWHE264mPaI6s7oq01UWxYYnpD5HAkBNciJM1fM9k16ci6cCIysozNgBI76S794X1/hSjniSmo8/bJ+spHUzdnkeg1wWs9DZ2inCTkEl9oqo+HEc4Yxx8GDa8PUNBdk8hOfALbOx4SsOLBVGTVuvTQOdu8e08wis3YYJPu8YMdVmgBqjgUOerGKb+txzygpLfUkN2gZF7zKjOa9GBuyrmPdey0pAUdnxFPByY0RuYQz3OWTIZmueKavFXUdth99gR9tKyGDfflDvtoIYn6Q4ps0ovfqg+Bs0XbyXVbpa0aIuEg/Zchu+5avB3a/ZF27B2A/LTUcH32hUH0C5S3wntYLWGDKhPOlwsPptiWHwg6M4OO2lqXamMVNEEaJFn+w0kJvzFgPbzwSlHlaalXSLScXgyqf4zcq2viINhBlO4Dc4LHAAERBFgZ5TsfZAwtu8QXPKeQ1n3oRwHF3abYtADZfTdlSvwXhOv95j0KpLM3dRX+GGjqUUwb1H9yVq2jnpSzkZqOVvj1Zn
+    username: AgCupLEKapKgo91eOXcBInznr123Wn/rKDERUVrDgn13BFuY0Znyw/4FL7JWZA2EG6uEp2+r2itP9Tfv752bcbJPQhDpGz17CiW35I/a7hSoAqnnuQDw8jOGGydOMADEC0pTNkFVOkhPbysaN5wVRhP+Wez+q8BEzaKIAMks4I75u4Fr+5KTda8LtuFO9HPlkzdXU6vvZkrDDBuXqRJnQfzhsetu78dbcgVC+4zlmZnMqRcgqilR5nrYrfI9Dlz8WYQy/PmwmLOEFlfi99K478/0/k3K18BFkpkwv5j5sS0DS2bruF/phpf+x2Zbdmv6Xn8YRiosOG1+8LrjvJn7GyIDN9mY1PJA02jV8iQdE1/tWXqt6kHKpelxMq+pa1XKiQOrJAlxQ/1AvU8/NRH3t20k1zKrDA0SLagZsdYcy8qyEPGPu2UkyelhWPMhwPdBTvbes8L6I/bz74HTifzkC+61oLeNc1vQLWquR9XPv6ZXCKXe1oF6h4oIAydsu/KQzcYQpLvEWskZRSyf2m2TsugbE9tl26rbuEhmWqxqnwcnJkubKmCeWam/te5FbDvfnOcJKmep0j8h12jzh0tUHj6CgLMxE8H88w4dT6Sytar1f9CCTdEGyomwnOOYqcwSMyvNoTcJxOaXhishRcf20dnG24btDsTvEqOvi5XRKOEPrw4xmTvVJxtt97/49TFTBkTq0wvXoCWMcKlCznDbc4qh
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: media,transmission
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: media,transmission
+      name: windscribe-auth
+      namespace: default
