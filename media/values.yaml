@@ -68,7 +68,7 @@ sonarr:
     port: 8989
   image:
     repository: linuxserver/sonarr
-    tag: "4.0.19"
+    tag: "4.0.19.2979-ls320"
   ingress:
     enabled: true
     external: false
