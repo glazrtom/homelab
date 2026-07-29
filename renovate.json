@@ -1,0 +1,125 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "timezone": "Europe/Prague",
+  "automerge": false,
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
+  "separateMinorPatch": true,
+  "additionalBranchPrefix": "{{parentDir}}-",
+  "ignorePaths": [
+    "authentik/**",
+    "debug/**",
+    "vpn/**",
+    "plex/charts/nginx/**",
+    "init.sh"
+  ],
+  "helm-values": {
+    "fileMatch": [
+      "(^|/)values(-[^/]+)?\\.ya?ml$"
+    ]
+  },
+  "argocd": {
+    "fileMatch": [
+      "^applications/.+\\.yaml$",
+      "^media/application/Application\\.yaml$"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^ingress/nginx-(external|internal)\\.yaml$"
+      ],
+      "matchStrings": [
+        "chart:\\s*(?<depName>ingress-nginx)\\s*\\n\\s*repo:\\s*(?<registryUrl>\\S+)\\s*\\n\\s*targetNamespace:\\s*\\S+\\s*\\n\\s*version:\\s*(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^argocd/install/kustomization\\.yaml$"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/argoproj/argo-cd/(?<currentValue>v[0-9.]+)/manifests/install\\.yaml"
+      ],
+      "depNameTemplate": "argoproj/argo-cd",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "The kubernetes/dockerfile managers misparse this file's Helm template placeholders, so match the literal busybox pin directly instead.",
+      "fileMatch": [
+        "^transmission/templates/deployment\\.yaml$"
+      ],
+      "matchStrings": [
+        "image:\\s*busybox:(?<currentValue>[^\\s\"']+)"
+      ],
+      "depNameTemplate": "busybox",
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "ArgoCD Applications that just point back at this same repo with targetRevision: HEAD aren't a real dependency to bump - only reflector's remote Helm chart is.",
+      "matchManagers": ["argocd"],
+      "matchDepNames": ["https://github.com/glazrtom/homelab.git"],
+      "enabled": false
+    },
+    {
+      "description": "Plex uses a non-semver <major>.<minor>.<patch>.<build>-<hash> scheme; changelogs live on the Plex forum, not GitHub releases.",
+      "matchDepNames": ["plexinc/pms-docker"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)-.*$",
+      "changelogUrl": "https://forums.plex.tv/c/plex-media-server/release-notes-plex-media-server/62"
+    },
+    {
+      "description": "Pi-hole uses calver YYYY.MM.N; point at the actual image source for changelogs.",
+      "matchDepNames": ["pihole/pihole"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+      "sourceUrl": "https://github.com/pi-hole/docker-pi-hole"
+    },
+    {
+      "description": "linuxserver.io images tag loosely; use loose versioning across the board.",
+      "matchDepNames": [
+        "linuxserver/jellyfin",
+        "linuxserver/radarr",
+        "linuxserver/sonarr",
+        "linuxserver/prowlarr",
+        "linuxserver/calibre-web"
+      ],
+      "versioning": "loose"
+    },
+    {
+      "description": "Point linuxserver wrapper images at the upstream app repo so PR bodies show the app's own changelog, not the container build notes.",
+      "matchDepNames": ["linuxserver/jellyfin"],
+      "sourceUrl": "https://github.com/jellyfin/jellyfin"
+    },
+    {
+      "matchDepNames": ["linuxserver/radarr"],
+      "sourceUrl": "https://github.com/Radarr/Radarr"
+    },
+    {
+      "matchDepNames": ["linuxserver/sonarr"],
+      "sourceUrl": "https://github.com/Sonarr/Sonarr"
+    },
+    {
+      "matchDepNames": ["linuxserver/prowlarr"],
+      "sourceUrl": "https://github.com/Prowlarr/Prowlarr"
+    },
+    {
+      "description": "Images pinned to a floating tag: pin+bump the digest instead so updates are still reviewable. These PRs carry no real changelog - the actual fix is pinning a version.",
+      "matchDepNames": ["linuxserver/calibre-web", "cloudflare/cloudflared"],
+      "pinDigests": true
+    },
+    {
+      "description": "authentik_helm chart changelog lives in the main authentik repo, not the Helm chart repo.",
+      "matchDepNames": ["authentik"],
+      "matchManagers": ["helmv3"],
+      "sourceUrl": "https://github.com/goauthentik/authentik"
+    }
+  ]
+}
