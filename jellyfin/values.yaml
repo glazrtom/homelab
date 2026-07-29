@@ -24,6 +24,14 @@ volumes:
     claimName: media-pvc
     mountPath: /media
 
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: "4"
+    memory: 4Gi
+
 probes:
   livenessProbe:
     tcpSocket:

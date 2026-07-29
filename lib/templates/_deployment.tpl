@@ -43,6 +43,10 @@ spec:
             {{- end }}
           volumeMounts:
             {{- include "lib.volumeMounts" . | trim | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.probes }}
           {{- toYaml . | nindent 10 }}
           {{- end }}
