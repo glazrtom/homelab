@@ -17,6 +17,10 @@ spec:
       labels:
         {{- include "lib.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- if or .Values.sidecarsTemplate .Values.initContainers }}
       initContainers:
         {{- with .Values.sidecarsTemplate }}

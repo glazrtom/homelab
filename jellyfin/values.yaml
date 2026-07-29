@@ -1,0 +1,47 @@
+namespace: jellyfin
+
+image:
+  repository: linuxserver/jellyfin
+  tag: "10.11.11"
+  pullPolicy: IfNotPresent
+
+app:
+  name: jellyfin
+  port: 8096
+  domainPrefix: jellyfin
+
+ingress:
+  enabled: true
+  external: false
+
+volumes:
+  config:
+    create: true
+    size: 15Gi
+    storageClassName: longhorn
+    mountPath: /config
+  media:
+    claimName: media-pvc
+    mountPath: /media
+
+probes:
+  livenessProbe:
+    tcpSocket:
+      port: 8096
+    initialDelaySeconds: 60
+    periodSeconds: 60
+
+# Hardware transcoding (RKMPP) needs the legacy BSP kernel (linux-image-legacy-rockchip64) -
+# the mainline current-rockchip64 kernel this cluster runs exposes only V4L2 stateless codec
+# devices, which jellyfin-ffmpeg cannot drive. Uncomment once the node is on the legacy kernel.
+# devices:
+#   dri:
+#     path: /dev/dri
+#   mali:
+#     path: /dev/mali0
+#   mpp:
+#     path: /dev/mpp_service
+#   rga:
+#     path: /dev/rga
+# podSecurityContext:
+#   supplementalGroups: [990, 44]  # render, video (as seen on orangepi)

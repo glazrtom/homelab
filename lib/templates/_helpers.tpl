@@ -45,6 +45,12 @@ app: {{ include "lib.fullname" . }}
   persistentVolumeClaim:
     claimName: {{ $v.claimName | default (printf "%s-%s-pvc" (include "lib.fullname" $) $name) }}
 {{- end }}
+{{- range $name, $d := .Values.devices }}
+- name: {{ $name }}
+  hostPath:
+    path: {{ $d.path }}
+    type: CharDevice
+{{- end }}
 {{- end -}}
 
 {{/* Env list from a plain map plus a map of secretKeyRef sources: {env: {...}, secretEnv: {NAME: {name, key}}}. */}}
@@ -69,5 +75,9 @@ app: {{ include "lib.fullname" . }}
   {{- with $v.subPath }}
   subPath: {{ . }}
   {{- end }}
+{{- end }}
+{{- range $name, $d := .Values.devices }}
+- name: {{ $name }}
+  mountPath: {{ $d.path }}
 {{- end }}
 {{- end -}}
