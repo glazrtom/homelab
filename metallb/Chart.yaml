@@ -7,8 +7,5 @@ description: >-
 version: 0.1.0
 dependencies:
   - name: metallb
-    # Pin to the same MetalLB version the cluster used to install from the
-    # native manifest. Verify against https://metallb.github.io/metallb
-    # before bumping.
-    version: 0.14.9
+    version: 0.16.1
     repository: https://metallb.github.io/metallb

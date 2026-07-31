@@ -83,15 +83,15 @@
       "sourceUrl": "https://github.com/pi-hole/docker-pi-hole"
     },
     {
-      "description": "linuxserver.io images tag loosely; use loose versioning across the board.",
+      "description": "linuxserver.io publishes nightly/develop builds into the same tag stream as stable, and ranks them highest under loose versioning. Only accept plain X.Y.Z release tags - those also always point at the newest -lsNNN container build of that app version.",
       "matchDepNames": [
         "linuxserver/jellyfin",
         "linuxserver/radarr",
         "linuxserver/sonarr",
-        "linuxserver/prowlarr",
-        "linuxserver/calibre-web"
+        "linuxserver/prowlarr"
       ],
-      "versioning": "loose"
+      "versioning": "loose",
+      "allowedVersions": "/^\\d+(\\.\\d+)*$/"
     },
     {
       "description": "Point linuxserver wrapper images at the upstream app repo so PR bodies show the app's own changelog, not the container build notes.",
@@ -112,7 +112,7 @@
     },
     {
       "description": "Images pinned to a floating tag: pin+bump the digest instead so updates are still reviewable. These PRs carry no real changelog - the actual fix is pinning a version.",
-      "matchDepNames": ["linuxserver/calibre-web", "cloudflare/cloudflared"],
+      "matchDepNames": ["linuxserver/calibre-web"],
       "pinDigests": true
     },
     {
