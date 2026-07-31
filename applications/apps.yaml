@@ -12,7 +12,7 @@ spec:
     targetRevision: HEAD
     path: applications/apps
     directory:
-      exclude: "{authentik,calibre,plex}.yaml"
+      exclude: "{calibre,plex}.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

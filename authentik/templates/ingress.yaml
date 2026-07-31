@@ -1,18 +1,1 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: authentik-ingress
-  namespace: {{ .Values.namespace }}
-spec:
-  ingressClassName: nginx-internal
-  rules:
-    - host: {{ .Values.ingress.domainPrefix }}.{{ .Values.global.domain.internal.suffix }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.service.name }}
-                port:
-                  number: {{ .Values.service.port }}
+{{ include "lib.ingress" . }}

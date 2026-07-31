@@ -11,7 +11,6 @@
   "separateMinorPatch": true,
   "additionalBranchPrefix": "{{parentDir}}-",
   "ignorePaths": [
-    "authentik/**",
     "debug/**",
     "vpn/**",
     "plex/charts/nginx/**",
@@ -116,7 +115,7 @@
       "pinDigests": true
     },
     {
-      "description": "authentik_helm chart changelog lives in the main authentik repo, not the Helm chart repo.",
+      "description": "authentik chart changelog lives in the main authentik repo, not the Helm chart repo.",
       "matchDepNames": ["authentik"],
       "matchManagers": ["helmv3"],
       "sourceUrl": "https://github.com/goauthentik/authentik"

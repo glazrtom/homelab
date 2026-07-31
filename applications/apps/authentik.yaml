@@ -13,8 +13,8 @@ spec:
     path: authentik
     helm:
       valueFiles:
-        - values.yaml
         - ../global/values.yaml
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik

@@ -1,31 +1,27 @@
 namespace: authentik
 
+app:
+  name: authentik
+  domainPrefix: auth
+  port: 80
+
+# Upstream chart names its server Service <release>-server, not <app.name>.
 service:
   name: authentik-server
   port: 80
 
 ingress:
-  domainPrefix: auth
+  enabled: true
+  external: true
 
 authentik:
   global:
-    namespaceOverride: authentik
-    env:
-      - name: AUTHENTIK_SECRET_KEY
-        valueFrom:
-          secretKeyRef:
-            name: authentik-secrets
-            key: SECRET_KEY
-      - name: AUTHENTIK_POSTGRESQL__PASSWORD
-        valueFrom:
-          secretKeyRef:
-            name: authentik-secrets
-            key: POSTGRESQL_PASSWORD
+    # Appended after the chart's own config secret, so these keys win.
+    envFrom:
+      - secretRef:
+          name: authentik-secrets
 
   authentik:
-    server:
-      service:
-        servicePortHttp: 80
     error_reporting:
       enabled: false
 
@@ -36,9 +32,10 @@ authentik:
       database: authentik
       existingSecret: authentik-secrets
       secretKeys:
-        userPasswordKey: POSTGRESQL_PASSWORD
-
-  redis:
-    enabled: true
-    auth:
-      enabled: false
+        userPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
+        adminPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
+    primary:
+      persistence:
+        enabled: true
+        storageClass: longhorn
+        size: 2Gi

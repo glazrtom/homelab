@@ -51,14 +51,13 @@ Services typically expose **two** Ingress objects (see `plex/templates/ingress.y
 Path from the internet: **Cloudflare Tunnel (`cloudflare/`) → nginx-external → service.**
 The `nginx-external` controller enforces **Authentik forward-auth on every external host**
 via `global-auth-*` snippets in `ingress/nginx-external.yaml` (auth URL points at the
-Authentik embedded outpost; `auth.glazrtom.fun` is exempted). It also maps Cloudflare's
+Authentik embedded outpost; `auth.glazrtom.cz` is exempted). It also maps Cloudflare's
 `CF-Visitor` header to a real scheme and rewrites `X-Forwarded-Proto/Host`. This is the
 "global domain auth" that recent commits iterate on — edit it there. `nginx-internal`
 has no auth.
 
-Authentik (SSO/IdP) is deployed from `authentik_helm/` (official upstream chart, with
-bundled postgres + redis). `authentik/` is the older custom chart being migrated away
-from — prefer `authentik_helm/`.
+Authentik (SSO/IdP) is deployed from `authentik/` (official upstream chart, with a
+bundled postgres, refactored onto the `lib/` templates like the other apps).
 
 ## Storage
 
@@ -79,7 +78,7 @@ any chart.
 **Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
 secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`,
 `base/windscribe-sealed.yaml`). Each service's `generate-*-secret.sh` (in `authentik/`,
-`authentik_helm/`, `base/`, `cloudflare/`) is **idempotent**: it reuses the plaintext
+`base/`, `cloudflare/`) is **idempotent**: it reuses the plaintext
 already sitting in its git-ignored `secrets/` dir if present, only generating (random
 values) or prompting (human-supplied values, e.g. the GHCR PAT or Windscribe creds) when
 that plaintext is missing, then runs `kubeseal` to produce the committed sealed file.
@@ -131,7 +130,7 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   `argocd_apps` (applies `applications/apps.yaml`; ArgoCD then deploys every workload
   under `applications/apps/`).
 - The `secrets` role always runs, looping over the generate scripts of every app in its
-  `secrets_items` list (`authentik/`, `authentik_helm/`, `base/` — GHCR and Windscribe).
+  `secrets_items` list (`authentik/`, `base/` — GHCR and Windscribe).
   It only prompts for a script's human-supplied values when that script has no local
   plaintext yet; if the plaintext is already there, it's assumed correct and just
   resealed as-is, no prompt (leave a prompt blank to skip that one and keep its
