@@ -13,6 +13,7 @@ cloudflare_cli_cert: "{{ cloudflare_cli_config_dir }}/cert.pem"
 cloudflare_plaintext_rel_path: cloudflare/secrets/token.yaml
 cloudflare_plaintext_path: "{{ path_repo_root }}/{{ cloudflare_plaintext_rel_path }}"
 cloudflare_route_dns: true
+cloudflare_route_dns_overwrite: true
 
 cloudflare_domain: >-
   {{ (lookup('file', path_repo_root ~ '/global/values.yaml') | from_yaml).global.domain.public.suffix }}

@@ -187,14 +187,9 @@
     - cloudflare_tunnel_list.rc != 0
 
 - name: Resolve the existing tunnel id
-  ansible.builtin.set_fact:
-    cloudflare_tunnel_id: >-
-      {{
-        (cloudflare_tunnel_list.stdout | from_json
-          | selectattr('name', 'equalto', cloudflare_tunnel_name)
-          | rejectattr('deleted_at')
-          | map(attribute='id') | list | first) | default('', true)
-      }}
+  ansible.builtin.include_tasks: resolve_tunnel_id.yml
+  vars:
+    cloudflare_tunnel_list_json: "{{ cloudflare_tunnel_list.stdout }}"
   when: not cloudflare_skipped
 
 - name: Create the tunnel if it doesn't exist
@@ -208,10 +203,11 @@
       failed_when: false
       changed_when: cloudflare_tunnel_create.rc == 0
 
-    - name: Skip if tunnel creation failed
-      ansible.builtin.set_fact:
-        cloudflare_skipped: true
-        cloudflare_skip_reason: "`cloudflared tunnel create` failed"
+    - name: Warn if tunnel creation reported an error
+      ansible.builtin.debug:
+        msg: >-
+          `cloudflared tunnel create` reported an error (tunnel may already exist):
+          {{ cloudflare_tunnel_create.stderr }}
       when: cloudflare_tunnel_create.rc != 0
 
     - name: Re-list tunnels to pick up the new id
@@ -219,18 +215,11 @@
       register: cloudflare_tunnel_list_after_create
       failed_when: false
       changed_when: false
-      when: not cloudflare_skipped
 
     - name: Resolve the newly created tunnel id
-      ansible.builtin.set_fact:
-        cloudflare_tunnel_id: >-
-          {{
-            (cloudflare_tunnel_list_after_create.stdout | from_json
-              | selectattr('name', 'equalto', cloudflare_tunnel_name)
-              | rejectattr('deleted_at')
-              | map(attribute='id') | list | first) | default('', true)
-          }}
-      when: not cloudflare_skipped
+      ansible.builtin.include_tasks: resolve_tunnel_id.yml
+      vars:
+        cloudflare_tunnel_list_json: "{{ cloudflare_tunnel_list_after_create.stdout }}"
 
 - name: Skip if no tunnel id could be resolved
   ansible.builtin.set_fact:
@@ -244,7 +233,9 @@
 
 - name: Route wildcard DNS to the tunnel
   ansible.builtin.command: >-
-    cloudflared tunnel route dns {{ cloudflare_tunnel_id }} "*.{{ cloudflare_domain }}"
+    cloudflared tunnel route dns
+    {{ '--overwrite-dns' if cloudflare_route_dns_overwrite | bool else '' }}
+    {{ cloudflare_tunnel_id }} "*.{{ cloudflare_domain }}"
   register: cloudflare_dns_route
   failed_when: false
   changed_when: >-
@@ -268,7 +259,7 @@
 # --- e. Token -> cloudflare/secrets/token.yaml --------------------------------
 
 - name: Fetch the tunnel token
-  ansible.builtin.command: "cloudflared tunnel token {{ cloudflare_tunnel_name }}"
+  ansible.builtin.command: "cloudflared tunnel token {{ cloudflare_tunnel_id }}"
   register: cloudflare_tunnel_token
   failed_when: false
   changed_when: false
