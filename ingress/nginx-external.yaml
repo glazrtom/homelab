@@ -34,10 +34,11 @@ spec:
           X-Forwarded-Proto: "$real_scheme"
 
         # Global Authentik
+        # Authentik resolves which application gates a host from X-Forwarded-Host,
+        # so the auth subrequest must carry it - nginx would otherwise send the
+        # outpost's own service address. Hosts exempt themselves with
+        # nginx.ingress.kubernetes.io/enable-global-auth: "false".
         global-auth-snippet: |
-          if ($host = "auth.glazrtom.cz") {
-            return 200;
-          }
           proxy_set_header X-Forwarded-Host $http_host;
         enable-forwarded-headers: "true"
         global-auth-url: "http://ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
