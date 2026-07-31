@@ -19,7 +19,7 @@ ingress:
 volumes:
   config:
     create: true
-    size: 15Gi
+    size: 2Gi
     storageClassName: longhorn
     mountPath: /config
   media:
