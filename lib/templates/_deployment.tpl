@@ -7,7 +7,7 @@ metadata:
   labels:
     {{- include "lib.selectorLabels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount | default 1 }}
+  replicas: {{ if hasKey .Values "replicaCount" }}{{ .Values.replicaCount }}{{ else }}1{{ end }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
   {{- with .Values.strategy }}
   strategy:
