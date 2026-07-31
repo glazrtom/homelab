@@ -25,10 +25,6 @@ authentik:
     error_reporting:
       enabled: false
 
-  blueprints:
-    configMaps:
-      - authentik-blueprints
-
   postgresql:
     enabled: true
     auth:
