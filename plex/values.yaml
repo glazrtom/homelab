@@ -11,6 +11,11 @@ env:
 
 domainPrefix: plex
 
+# Plex clients can't follow a browser SSO redirect, so this is where an
+# nginx.ingress.kubernetes.io/enable-global-auth: "false" goes if they break.
+ingress:
+  annotations: {}
+
 volumes:
   config:
     size: 10Gi

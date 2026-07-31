@@ -13,6 +13,10 @@ service:
 ingress:
   enabled: true
   external: true
+  annotations:
+    # Authentik's own host must not be forward-auth'd against itself. Harmless on
+    # the nginx-internal copy, which has no global auth.
+    nginx.ingress.kubernetes.io/enable-global-auth: "false"
 
 authentik:
   global:

@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   name: plex-ingress-external
   namespace: {{ .Values.namespace }}
+  {{- with (.Values.ingress | default dict).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: nginx-external
   rules:
