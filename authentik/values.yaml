@@ -29,6 +29,12 @@ authentik:
     error_reporting:
       enabled: false
 
+  # Mounted into the worker at /blueprints/mounted/cm-<name>, discovered hourly and
+  # on worker start.
+  blueprints:
+    configMaps:
+      - authentik-blueprints
+
   postgresql:
     enabled: true
     auth:

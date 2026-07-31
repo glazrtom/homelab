@@ -1,0 +1,168 @@
+{{- $public := .Values.global.domain.public.suffix }}
+{{- $authHost := printf "%s.%s" .Values.app.domainPrefix $public }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints
+  namespace: {{ include "lib.namespace" . }}
+data:
+  # Applied by the worker from /blueprints/mounted/cm-authentik-blueprints/access.yaml.
+  # BlueprintInstance is keyed on that path, so renaming this ConfigMap or the key
+  # below orphans the old instance into a permanently-failing state.
+  #
+  # `state: created` marks seed-only entries: either they carry a credential that
+  # must not be re-rolled, or the serializer would clobber data not declared here.
+  access.yaml: |
+    version: 1
+    metadata:
+      name: homelab - Access
+    entries:
+      # GroupSerializer.users defaults to [] when omitted and the importer builds a
+      # non-partial serializer, so a re-apply would empty the group.
+      - model: authentik_core.group
+        id: group-users
+        state: created
+        identifiers:
+          name: homelab-users
+
+      - model: authentik_core.group
+        id: group-admins
+        state: created
+        identifiers:
+          name: homelab-admins
+
+      # Catch-all forward auth for every *.{{ $public }} host that does not have a
+      # provider of its own. Matched on cookie_domain suffix, not external_host.
+      - model: authentik_providers_proxy.proxyprovider
+        id: provider-forward-auth
+        identifiers:
+          name: homelab-forward-auth
+        attrs:
+          mode: forward_domain
+          external_host: https://{{ $authHost }}
+          cookie_domain: {{ $public }}
+          intercept_header_auth: true
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation]]
+
+      - model: authentik_core.application
+        id: app-homelab
+        identifiers:
+          slug: homelab
+        attrs:
+          name: Homelab
+          provider: !KeyOf provider-forward-auth
+          meta_launch_url: https://{{ $authHost }}
+          policy_engine_mode: any
+
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-homelab
+          group: !KeyOf group-users
+          order: 0
+
+      # Matches the connection outpost_connection_discovery auto-creates on startup,
+      # by name, so this adopts it rather than adding a duplicate.
+      - model: authentik_outposts.kubernetesserviceconnection
+        id: sc-local
+        identifiers:
+          name: Local Kubernetes Cluster
+        attrs:
+          local: true
+          kubeconfig: {}
+          verify_ssl: true
+
+      # service_connection is pinned rather than omitted: nulling it would tear down
+      # ak-outpost-authentik-embedded-outpost and kill global auth for every host.
+      - model: authentik_outposts.outpost
+        identifiers:
+          managed: goauthentik.io/outposts/embedded
+        attrs:
+          type: proxy
+          service_connection: !KeyOf sc-local
+          providers:
+            - !KeyOf provider-forward-auth
+
+      - model: authentik_core.application
+        id: app-ldap
+        identifiers:
+          slug: ldap
+        attrs:
+          name: LDAP
+          policy_engine_mode: any
+
+      # The application link lives on the provider - Application has no writable
+      # backchannel_providers field, only the reverse relation.
+      - model: authentik_providers_ldap.ldapprovider
+        id: provider-ldap
+        identifiers:
+          name: homelab-ldap
+        attrs:
+          base_dn: DC=ldap,DC={{ $public | replace "." ",DC=" }}
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+          bind_mode: cached
+          search_mode: cached
+          mfa_support: false
+          is_backchannel: true
+          backchannel_application: !KeyOf app-ldap
+
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-ldap
+          group: !KeyOf group-users
+          order: 0
+
+      # authentik_host must be the in-cluster URL: the public one is forward-auth'd,
+      # which would block the outpost's own websocket back to authentik.
+      - model: authentik_outposts.outpost
+        identifiers:
+          name: ldap
+        attrs:
+          type: ldap
+          service_connection: !KeyOf sc-local
+          providers:
+            - !KeyOf provider-ldap
+          config:
+            authentik_host: http://{{ .Values.service.name }}.{{ include "lib.namespace" . }}.svc.cluster.local/
+            kubernetes_namespace: {{ include "lib.namespace" . }}
+            kubernetes_replicas: 1
+            kubernetes_service_type: ClusterIP
+
+      # search_full_directory is granted on the user directly: the group -> role path
+      # is not blueprintable, GroupRole being an internally-managed through-model.
+      - model: authentik_core.user
+        id: user-ldap-bind
+        state: created
+        identifiers:
+          username: ldap-bind
+        attrs:
+          name: LDAP Bind Service Account
+          type: service_account
+          path: goauthentik.io/service-accounts
+          permissions:
+            - authentik_providers_ldap.search_full_directory
+            - authentik_core.view_user
+            - authentik_core.view_group
+
+      # Bound by user rather than via homelab-users, which would mean declaring that
+      # group's whole membership here.
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-ldap
+          user: !KeyOf user-ldap-bind
+          order: 1
+
+      # An app_password token rather than a plain user password, so the bind keeps
+      # working if MFA is ever added to default-authentication-flow. state: created so
+      # the key is never re-rolled out from under Jellyfin's PVC-stored plugin config.
+      - model: authentik_core.token
+        state: created
+        identifiers:
+          identifier: ldap-bind-password
+        attrs:
+          user: !KeyOf user-ldap-bind
+          intent: app_password
+          expiring: false
+          key: !Env LDAP_BIND_KEY
+          description: LDAP bind password for the Jellyfin LDAP-Authentication plugin
