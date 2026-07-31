@@ -65,7 +65,17 @@
       "WebFetch(domain:traefik.github.io)",
       "WebFetch(domain:pkgs.tailscale.com)",
       "WebFetch(domain:hub.docker.com)",
-      "WebFetch(domain:docs.pi-hole.net)"
+      "WebFetch(domain:docs.pi-hole.net)",
+      "WebFetch(domain:docs.renovatebot.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:galaxy.ansible.com)",
+      "WebFetch(domain:index.docker.io)",
+      "WebFetch(domain:auth.docker.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:metallb.io)",
+      "WebFetch(domain:newreleases.io)",
+      "WebFetch(domain:docs.goauthentik.io)",
+      "WebFetch(domain:release-assets.githubusercontent.com)"
     ],
     "ask": [
       "Bash(git push*)",
