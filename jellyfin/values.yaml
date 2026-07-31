@@ -1,5 +1,7 @@
 namespace: jellyfin
 
+replicaCount: 0
+
 image:
   repository: linuxserver/jellyfin
   tag: "10.11.11"
