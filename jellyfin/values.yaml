@@ -17,7 +17,7 @@ ingress:
 volumes:
   config:
     create: true
-    size: 2Gi
+    size: 5Gi
     storageClassName: longhorn
     mountPath: /config
   media:
@@ -33,11 +33,20 @@ resources:
     memory: 4Gi
 
 probes:
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8096
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    failureThreshold: 3
   livenessProbe:
-    tcpSocket:
+    httpGet:
+      path: /health
       port: 8096
     initialDelaySeconds: 60
     periodSeconds: 60
+    failureThreshold: 3
 
 # Hardware transcoding (RKMPP) needs the legacy BSP kernel (linux-image-legacy-rockchip64) -
 # the mainline current-rockchip64 kernel this cluster runs exposes only V4L2 stateless codec
