@@ -7,7 +7,7 @@ sealed_secrets_fullname: sealed-secrets-controller
 cloudflare_sealed_secret_rel_path: cloudflare/templates/sealed-token.yaml
 cloudflare_sealed_secret_path: "{{ path_repo_root }}/{{ cloudflare_sealed_secret_rel_path }}"
 
-cloudflare_tunnel_name: cloudflare-tunnel
+cloudflare_tunnel_name: homelab
 cloudflare_cli_config_dir: "{{ path_home }}/.cloudflared"
 cloudflare_cli_cert: "{{ cloudflare_cli_config_dir }}/cert.pem"
 cloudflare_plaintext_rel_path: cloudflare/secrets/token.yaml
