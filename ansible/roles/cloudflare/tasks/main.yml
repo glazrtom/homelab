@@ -1,27 +1,315 @@
-- name: Prompt for the Cloudflare tunnel token
+# Sets up the Cloudflare tunnel end to end: cloudflared CLI, login, tunnel, DNS route,
+# and the sealed token secret. Never fails the play — any missing prerequisite just
+# skips the rest of this role (cloudflare_skipped) so playbooks/secrets.yml still
+# reseals every other secret even when cloudflared isn't set up on this machine.
+- name: Reset skip state for this run
+  ansible.builtin.set_fact:
+    cloudflare_skipped: false
+    cloudflare_skip_reason: ""
+
+# --- a. CLI check + optional install ---------------------------------------
+
+- name: Check whether cloudflared is installed
+  ansible.builtin.command: command -v cloudflared
+  register: cloudflare_cli_check
+  failed_when: false
+  changed_when: false
+  when: not cloudflare_skipped
+
+- name: Prompt whether to install cloudflared
   ansible.builtin.pause:
-    prompt: "Enter Cloudflare tunnel token (leave blank to keep the committed sealed secret)"
-    echo: no
-  register: cloudflare_tunnel_token_prompt
-
-- name: Fail if no token was given and no sealed secret is committed yet
-  ansible.builtin.fail:
-    msg: >-
-      No Cloudflare tunnel token entered, and {{ cloudflare_sealed_secret_path }}
-      does not exist yet. A token is required on first run.
+    prompt: "cloudflared is not installed. Install it now? [y/N] (blank = skip Cloudflare setup)"
+  register: cloudflare_install_prompt
   when:
-    - (cloudflare_tunnel_token_prompt.user_input | default('')) | length == 0
-    - not (cloudflare_sealed_secret_path is exists)
+    - not cloudflare_skipped
+    - cloudflare_cli_check.rc != 0
 
-- name: Reseal (and if needed, commit) the Cloudflare tunnel token
-  when: (cloudflare_tunnel_token_prompt.user_input | default('')) | length > 0
+- name: Skip if cloudflared install was declined
+  ansible.builtin.set_fact:
+    cloudflare_skipped: true
+    cloudflare_skip_reason: "cloudflared not installed"
+  when:
+    - not cloudflare_skipped
+    - cloudflare_cli_check.rc != 0
+    - (cloudflare_install_prompt.user_input | default('') | trim | lower) not in ['y', 'yes']
+
+- name: Install cloudflared
+  when:
+    - not cloudflare_skipped
+    - cloudflare_cli_check.rc != 0
   block:
+    - name: Gather OS facts to pick an installer
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "!min"
+          - distribution
+      when: ansible_facts.os_family is not defined
+
+    - name: Resolve the installer for this OS
+      ansible.builtin.set_fact:
+        cloudflare_installer: "{{ 'brew' if os_macos else ('apt-get' if os_debian else '') }}"
+
+    - name: Skip if this OS has no supported installer
+      ansible.builtin.set_fact:
+        cloudflare_skipped: true
+        cloudflare_skip_reason: "no supported installer for OS family {{ ansible_facts.os_family }} (only macOS/brew and Debian/apt are automated)"
+      when:
+        - not cloudflare_skipped
+        - cloudflare_installer | length == 0
+
+    - name: Check that the installer binary is available
+      ansible.builtin.command: "command -v {{ cloudflare_installer }}"
+      register: cloudflare_installer_check
+      failed_when: false
+      changed_when: false
+      when:
+        - not cloudflare_skipped
+        - cloudflare_installer | length > 0
+
+    - name: Skip if the installer binary is missing
+      ansible.builtin.set_fact:
+        cloudflare_skipped: true
+        cloudflare_skip_reason: "{{ cloudflare_installer }} not found for OS family {{ ansible_facts.os_family }}"
+      when:
+        - not cloudflare_skipped
+        - cloudflare_installer | length > 0
+        - cloudflare_installer_check.rc != 0
+
+    - name: Install cloudflared via Homebrew
+      ansible.builtin.command: brew install cloudflared
+      register: cloudflare_brew_install
+      failed_when: false
+      changed_when: "'already installed' not in cloudflare_brew_install.stdout"
+      when:
+        - not cloudflare_skipped
+        - cloudflare_installer == 'brew'
+
+    - name: Download the cloudflared .deb package
+      ansible.builtin.get_url:
+        url: "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb"
+        dest: /tmp/cloudflared.deb
+        mode: "0644"
+      register: cloudflare_deb_download
+      failed_when: false
+      when:
+        - not cloudflare_skipped
+        - cloudflare_installer == 'apt-get'
+
+    - name: Install the cloudflared .deb package
+      ansible.builtin.apt:
+        deb: /tmp/cloudflared.deb
+      become: true
+      register: cloudflare_apt_install
+      failed_when: false
+      when:
+        - not cloudflare_skipped
+        - cloudflare_installer == 'apt-get'
+        - cloudflare_deb_download.status | default(0) == 200
+
+    - name: Re-check whether cloudflared is now installed
+      ansible.builtin.command: command -v cloudflared
+      register: cloudflare_cli_recheck
+      failed_when: false
+      changed_when: false
+      when: not cloudflare_skipped
+
+    - name: Skip if cloudflared is still missing after install
+      ansible.builtin.set_fact:
+        cloudflare_skipped: true
+        cloudflare_skip_reason: "cloudflared install failed"
+      when:
+        - not cloudflare_skipped
+        - cloudflare_cli_recheck.rc != 0
+
+# --- b. Login check + optional login ----------------------------------------
+
+- name: Check whether cloudflared is logged in
+  ansible.builtin.stat:
+    path: "{{ cloudflare_cli_cert }}"
+  register: cloudflare_cert_stat
+  when: not cloudflare_skipped
+
+- name: Prompt whether to log in to cloudflared
+  ansible.builtin.pause:
+    prompt: "cloudflared is not logged in. Run `cloudflared tunnel login` now? It opens a browser. [y/N] (blank = skip Cloudflare setup)"
+  register: cloudflare_login_prompt
+  when:
+    - not cloudflare_skipped
+    - not cloudflare_cert_stat.stat.exists
+
+- name: Skip if cloudflared login was declined
+  ansible.builtin.set_fact:
+    cloudflare_skipped: true
+    cloudflare_skip_reason: "cloudflared not logged in"
+  when:
+    - not cloudflare_skipped
+    - not cloudflare_cert_stat.stat.exists
+    - (cloudflare_login_prompt.user_input | default('') | trim | lower) not in ['y', 'yes']
+
+- name: Log in to cloudflared
+  when:
+    - not cloudflare_skipped
+    - not cloudflare_cert_stat.stat.exists
+  block:
+    - name: Run cloudflared tunnel login
+      ansible.builtin.command: cloudflared tunnel login
+      register: cloudflare_login_run
+      failed_when: false
+      changed_when: true
+
+    - name: Re-check for the login certificate
+      ansible.builtin.stat:
+        path: "{{ cloudflare_cli_cert }}"
+      register: cloudflare_cert_recheck
+
+    - name: Skip if login did not produce a certificate
+      ansible.builtin.set_fact:
+        cloudflare_skipped: true
+        cloudflare_skip_reason: "cloudflared login did not complete"
+      when: not cloudflare_cert_recheck.stat.exists
+
+# --- c. Find or create the tunnel -------------------------------------------
+
+- name: List existing tunnels
+  ansible.builtin.command: cloudflared tunnel list --output json
+  register: cloudflare_tunnel_list
+  failed_when: false
+  changed_when: false
+  when: not cloudflare_skipped
+
+- name: Skip if the tunnel list could not be read
+  ansible.builtin.set_fact:
+    cloudflare_skipped: true
+    cloudflare_skip_reason: "`cloudflared tunnel list` failed"
+  when:
+    - not cloudflare_skipped
+    - cloudflare_tunnel_list.rc != 0
+
+- name: Resolve the existing tunnel id
+  ansible.builtin.set_fact:
+    cloudflare_tunnel_id: >-
+      {{
+        (cloudflare_tunnel_list.stdout | from_json
+          | selectattr('name', 'equalto', cloudflare_tunnel_name)
+          | rejectattr('deleted_at')
+          | map(attribute='id') | list | first) | default('', true)
+      }}
+  when: not cloudflare_skipped
+
+- name: Create the tunnel if it doesn't exist
+  when:
+    - not cloudflare_skipped
+    - cloudflare_tunnel_id | length == 0
+  block:
+    - name: Create the tunnel
+      ansible.builtin.command: "cloudflared tunnel create {{ cloudflare_tunnel_name }}"
+      register: cloudflare_tunnel_create
+      failed_when: false
+      changed_when: cloudflare_tunnel_create.rc == 0
+
+    - name: Skip if tunnel creation failed
+      ansible.builtin.set_fact:
+        cloudflare_skipped: true
+        cloudflare_skip_reason: "`cloudflared tunnel create` failed"
+      when: cloudflare_tunnel_create.rc != 0
+
+    - name: Re-list tunnels to pick up the new id
+      ansible.builtin.command: cloudflared tunnel list --output json
+      register: cloudflare_tunnel_list_after_create
+      failed_when: false
+      changed_when: false
+      when: not cloudflare_skipped
+
+    - name: Resolve the newly created tunnel id
+      ansible.builtin.set_fact:
+        cloudflare_tunnel_id: >-
+          {{
+            (cloudflare_tunnel_list_after_create.stdout | from_json
+              | selectattr('name', 'equalto', cloudflare_tunnel_name)
+              | rejectattr('deleted_at')
+              | map(attribute='id') | list | first) | default('', true)
+          }}
+      when: not cloudflare_skipped
+
+- name: Skip if no tunnel id could be resolved
+  ansible.builtin.set_fact:
+    cloudflare_skipped: true
+    cloudflare_skip_reason: "could not resolve a tunnel id for {{ cloudflare_tunnel_name }}"
+  when:
+    - not cloudflare_skipped
+    - cloudflare_tunnel_id | length == 0
+
+# --- d. Wildcard DNS route ---------------------------------------------------
+
+- name: Route wildcard DNS to the tunnel
+  ansible.builtin.command: >-
+    cloudflared tunnel route dns {{ cloudflare_tunnel_id }} "*.{{ cloudflare_domain }}"
+  register: cloudflare_dns_route
+  failed_when: false
+  changed_when: >-
+    cloudflare_dns_route.rc == 0 and
+    'already exists' not in (cloudflare_dns_route.stderr | default(''))
+  when:
+    - not cloudflare_skipped
+    - cloudflare_route_dns | bool
+
+- name: Warn if the DNS route could not be confirmed
+  ansible.builtin.debug:
+    msg: >-
+      `cloudflared tunnel route dns` reported an error (route may already exist,
+      or needs manual attention): {{ cloudflare_dns_route.stderr }}
+  when:
+    - not cloudflare_skipped
+    - cloudflare_route_dns | bool
+    - cloudflare_dns_route.rc != 0
+    - "'already exists' not in (cloudflare_dns_route.stderr | default(''))"
+
+# --- e. Token -> cloudflare/secrets/token.yaml --------------------------------
+
+- name: Fetch the tunnel token
+  ansible.builtin.command: "cloudflared tunnel token {{ cloudflare_tunnel_name }}"
+  register: cloudflare_tunnel_token
+  failed_when: false
+  changed_when: false
+  no_log: true
+  when: not cloudflare_skipped
+
+- name: Skip if the tunnel token could not be fetched
+  ansible.builtin.set_fact:
+    cloudflare_skipped: true
+    cloudflare_skip_reason: "`cloudflared tunnel token` failed"
+  when:
+    - not cloudflare_skipped
+    - (cloudflare_tunnel_token.rc != 0) or (cloudflare_tunnel_token.stdout | trim | length == 0)
+
+- name: Write and seal the token secret
+  when: not cloudflare_skipped
+  block:
+    - name: Ensure the plaintext secrets directory exists
+      ansible.builtin.file:
+        path: "{{ cloudflare_plaintext_path | dirname }}"
+        state: directory
+        mode: "0700"
+
+    - name: Check for a previous plaintext secret
+      ansible.builtin.stat:
+        path: "{{ cloudflare_plaintext_path }}"
+      register: cloudflare_plaintext_file
+
+    - name: Read the previous plaintext secret
+      ansible.builtin.slurp:
+        src: "{{ cloudflare_plaintext_path }}"
+      register: cloudflare_plaintext_before
+      when: cloudflare_plaintext_file.stat.exists
+      no_log: true
+
     - name: Render the plaintext Secret manifest
       ansible.builtin.command:
         cmd: >-
           kubectl create secret generic {{ cloudflare_secret_name }}
           --namespace {{ cloudflare_namespace }}
-          --from-literal=token={{ cloudflare_tunnel_token_prompt.user_input }}
+          --from-literal=token={{ cloudflare_tunnel_token.stdout | trim }}
           --dry-run=client -o yaml
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
@@ -29,52 +317,117 @@
       no_log: true
       register: cloudflare_plain_secret
 
-    - name: Seal the Secret with kubeseal
-      ansible.builtin.command:
-        cmd: >-
-          kubeseal --kubeconfig {{ kubeconfig_path }}
-          --controller-namespace {{ sealed_secrets_namespace }}
-          --controller-name {{ sealed_secrets_fullname }}
-          --format yaml
-      args:
-        stdin: "{{ cloudflare_plain_secret.stdout }}"
-      changed_when: false
+    - name: Write the plaintext secret
+      ansible.builtin.copy:
+        content: "{{ cloudflare_plain_secret.stdout }}\n"
+        dest: "{{ cloudflare_plaintext_path }}"
+        mode: "0600"
       no_log: true
-      register: cloudflare_sealed_secret
+
+    # --- f. Seal + commit -----------------------------------------------
 
     - name: Check whether a sealed secret is already committed
       ansible.builtin.stat:
         path: "{{ cloudflare_sealed_secret_path }}"
       register: cloudflare_sealed_secret_file
 
-    - name: Read the currently committed sealed secret
-      ansible.builtin.slurp:
-        src: "{{ cloudflare_sealed_secret_path }}"
-      register: cloudflare_committed_secret
+    - name: Validate the committed sealed secret against the live controller
+      ansible.builtin.command:
+        cmd: >-
+          kubeseal --kubeconfig {{ kubeconfig_path }}
+          --controller-namespace {{ sealed_secrets_namespace }}
+          --controller-name {{ sealed_secrets_fullname }}
+          --validate
+      args:
+        stdin: "{{ lookup('file', cloudflare_sealed_secret_path) }}"
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: cloudflare_sealed_secret_validate
+      failed_when: false
+      changed_when: false
       when: cloudflare_sealed_secret_file.stat.exists
+
+    - name: Determine whether resealing is needed
+      ansible.builtin.set_fact:
+        cloudflare_needs_reseal: >-
+          {{
+            not cloudflare_sealed_secret_file.stat.exists or
+            cloudflare_sealed_secret_validate.rc != 0 or
+            not cloudflare_plaintext_file.stat.exists or
+            (cloudflare_plaintext_before.content | b64decode) != (cloudflare_plain_secret.stdout + "\n")
+          }}
       no_log: true
 
-    - name: Write, commit and push the sealed secret if it changed
-      when: >-
-        not cloudflare_sealed_secret_file.stat.exists or
-        (cloudflare_committed_secret.content | b64decode) != (cloudflare_sealed_secret.stdout + "\n")
+    - name: Reseal, commit and push the tunnel token
+      when: cloudflare_needs_reseal | bool
       block:
+        - name: Seal the Secret with kubeseal
+          ansible.builtin.command:
+            cmd: >-
+              kubeseal --kubeconfig {{ kubeconfig_path }}
+              --controller-namespace {{ sealed_secrets_namespace }}
+              --controller-name {{ sealed_secrets_fullname }}
+              --format yaml
+          args:
+            stdin: "{{ cloudflare_plain_secret.stdout }}"
+          changed_when: false
+          no_log: true
+          register: cloudflare_sealed_secret
+
         - name: Write the sealed secret into the repo
           ansible.builtin.copy:
             content: "{{ cloudflare_sealed_secret.stdout }}\n"
             dest: "{{ cloudflare_sealed_secret_path }}"
 
-        - name: Stage the sealed secret
+        - name: Check whether the sealed secret actually changed
           ansible.builtin.command:
-            cmd: git add -- "{{ cloudflare_sealed_secret_rel_path }}"
+            cmd: "git status --porcelain -- {{ cloudflare_sealed_secret_rel_path }}"
             chdir: "{{ path_repo_root }}"
+          register: cloudflare_sealed_git_status
+          changed_when: false
 
-        - name: Commit the sealed secret
-          ansible.builtin.command:
-            cmd: git commit -m "Update Cloudflare tunnel sealed secret" -- "{{ cloudflare_sealed_secret_rel_path }}"
-            chdir: "{{ path_repo_root }}"
+        - name: Commit and push the changed sealed secret
+          when: cloudflare_sealed_git_status.stdout | trim | length > 0
+          block:
+            - name: Prompt whether to commit the sealed secret
+              ansible.builtin.pause:
+                prompt: "Commit the updated Cloudflare tunnel sealed secret? [y/N]"
+              register: cloudflare_commit_prompt
 
-        - name: Push the commit
-          ansible.builtin.command:
-            cmd: git push
-            chdir: "{{ path_repo_root }}"
+            - name: Stage, commit and push
+              when: (cloudflare_commit_prompt.user_input | default('') | trim | lower) in ['y', 'yes']
+              block:
+                - name: Stage the sealed secret
+                  ansible.builtin.command:
+                    cmd: git add -- "{{ cloudflare_sealed_secret_rel_path }}"
+                    chdir: "{{ path_repo_root }}"
+
+                - name: Commit the sealed secret
+                  ansible.builtin.command:
+                    cmd: git commit -m "Update Cloudflare tunnel sealed secret" -- "{{ cloudflare_sealed_secret_rel_path }}"
+                    chdir: "{{ path_repo_root }}"
+
+                - name: Prompt whether to push the commit
+                  ansible.builtin.pause:
+                    prompt: "Push the commit to origin? [y/N]"
+                  register: cloudflare_push_prompt
+
+                - name: Push the commit
+                  ansible.builtin.command:
+                    cmd: git push
+                    chdir: "{{ path_repo_root }}"
+                  when: (cloudflare_push_prompt.user_input | default('') | trim | lower) in ['y', 'yes']
+
+            - name: Warn that the sealed secret was left uncommitted
+              ansible.builtin.debug:
+                msg: "Sealed secret left uncommitted in the working tree: {{ cloudflare_sealed_secret_rel_path }}"
+              when: (cloudflare_commit_prompt.user_input | default('') | trim | lower) not in ['y', 'yes']
+
+# --- Report ------------------------------------------------------------------
+
+- name: Report that Cloudflare setup was skipped
+  ansible.builtin.debug:
+    msg: >-
+      Skipped Cloudflare tunnel setup: {{ cloudflare_skip_reason }}.
+      Committed sealed secret left as-is.
+  when: cloudflare_skipped

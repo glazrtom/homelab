@@ -5,3 +5,9 @@ kubeconfig_path: "{{ path_home }}/.kube/config"
 
 path_repo_root: "{{ playbook_dir | dirname | dirname }}"
 homelab_manifests_base: "https://raw.githubusercontent.com/glazrtom/homelab/refs/heads/master/applications"
+
+os_macos: "{{ ansible_facts['os_family'] == 'Darwin' }}"
+os_debian: "{{ ansible_facts['os_family'] == 'Debian' }}"
+os_archlinux: "{{ ansible_facts['os_family'] == 'Archlinux' }}"
+os_redhat: "{{ ansible_facts['os_family'] == 'RedHat' }}"
+os_linux: "{{ not os_macos }}"
