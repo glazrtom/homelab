@@ -1,0 +1,23 @@
+# `cloudflared tunnel list` already filters deleted tunnels server-side (is_deleted=false),
+# and emits a truthy "0001-01-01T00:00:00Z" for live ones — so don't filter on deleted_at.
+- name: Resolve the tunnel id by name
+  ansible.builtin.set_fact:
+    cloudflare_tunnel_matches: >-
+      {{
+        cloudflare_tunnel_list_json | from_json
+          | selectattr('name', 'equalto', cloudflare_tunnel_name)
+          | sort(attribute='created_at', reverse=true) | list
+      }}
+
+- name: Warn about duplicate tunnels sharing the name
+  ansible.builtin.debug:
+    msg: >-
+      {{ cloudflare_tunnel_matches | length }} live tunnels are named
+      {{ cloudflare_tunnel_name }}; using the newest
+      ({{ cloudflare_tunnel_matches | first }}). Delete the stale ones in Cloudflare.
+  when: cloudflare_tunnel_matches | length > 1
+
+- name: Set the tunnel id
+  ansible.builtin.set_fact:
+    cloudflare_tunnel_id: >-
+      {{ (cloudflare_tunnel_matches | map(attribute='id') | first) | default('', true) }}
