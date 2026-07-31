@@ -1,6 +1,7 @@
 #! /bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
+source ../scripts/seal.sh
 
 PLAIN=secrets/github-credentials.yaml
 SEALED=github-credentials-sealed.yaml
@@ -38,6 +39,4 @@ if [ ! -f "$PLAIN" ]; then
   unset USERNAME TOKEN EMAIL
 fi
 
-kubeseal --controller-namespace kube-system \
-  --controller-name sealed-secrets-controller \
-  --format yaml < "$PLAIN" > "$SEALED"
+seal_if_needed "$PLAIN" "$SEALED"

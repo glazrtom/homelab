@@ -81,12 +81,15 @@ secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credenti
 `base/`, `cloudflare/`) is **idempotent**: it reuses the plaintext
 already sitting in its git-ignored `secrets/` dir if present, only generating (random
 values) or prompting (human-supplied values, e.g. the GHCR PAT or Windscribe creds) when
-that plaintext is missing, then runs `kubeseal` to produce the committed sealed file.
-Sealed secrets are encrypted against one specific cluster's key, so re-run these after
-provisioning a new cluster — `ansible/roles/secrets` does this automatically (see
-Provisioning below). `**/secrets/` is git-ignored at the repo root; never commit plaintext
-from it. Some bootstrap secrets (TLS, Tailscale) are instead created imperatively — see
-`init.sh`.
+that plaintext is missing, then calls `scripts/seal.sh` (shared helper) to reseal via
+`kubeseal`. Resealing is itself skipped unless the plaintext hash changed or the committed
+sealed file no longer validates against the live controller — `kubeseal`'s output is
+non-deterministic (fresh random session key/padding per run), so an unconditional reseal
+would show as a git diff on every run even with nothing to change. Sealed secrets are
+encrypted against one specific cluster's key, so re-run these after provisioning a new
+cluster — `ansible/roles/secrets` does this automatically (see Provisioning below).
+`**/secrets/` is git-ignored at the repo root; never commit plaintext from it. Some
+bootstrap secrets (TLS, Tailscale) are instead created imperatively — see `init.sh`.
 
 `base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
 (emberstack), which mirrors it into other namespaces. `base/generate-windscribe-secret.sh`

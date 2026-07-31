@@ -1,6 +1,7 @@
 #! /bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
+source ../scripts/seal.sh
 
 PLAIN=secrets/secret.yaml
 SEALED=templates/sealed-secret.yaml
@@ -17,6 +18,4 @@ if [ ! -f "$PLAIN" ]; then
   chmod go-rwx "$PLAIN"
 fi
 
-kubeseal --controller-namespace kube-system \
-  --controller-name sealed-secrets-controller \
-  --format yaml < "$PLAIN" > "$SEALED"
+seal_if_needed "$PLAIN" "$SEALED"
