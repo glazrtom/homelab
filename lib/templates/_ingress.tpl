@@ -1,7 +1,10 @@
 {{/*
 Internal ingress always; the nginx-external one only when ingress.external is set.
 External hosts are behind Authentik forward-auth enforced by the nginx-external
-controller itself (ingress/nginx-external.yaml), so nothing is added here.
+controller itself (ingress/nginx-external.yaml), so nothing is added here - unless
+ingress.authProvider names a per-app provider, which overrides that global auth with
+its own so the app can have its own allowlist. Such apps also need
+lib.authOutpost rendered in their chart.
 */}}
 {{- define "lib.ingress" -}}
 {{- $ing := .Values.ingress | default dict }}
@@ -31,22 +34,44 @@ spec:
                 port:
                   number: {{ $port }}
 {{- if $ing.external }}
+{{- $extHost := printf "%s.%s" .Values.app.domainPrefix .Values.global.domain.public.suffix }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "lib.fullname" . }}-ingress-external
   namespace: {{ include "lib.namespace" . }}
-  {{- with $ing.annotations }}
+  {{- if or $ing.annotations $ing.authProvider }}
   annotations:
+    {{- with $ing.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if $ing.authProvider }}
+    # An Ingress-level auth-url replaces the controller's global auth for this host,
+    # so the gate becomes the {{ $ing.authProvider }} provider and its own bindings.
+    nginx.ingress.kubernetes.io/auth-url: http://{{ include "lib.authOutpostFqdn" . }}:{{ include "lib.authOutpostPort" . }}/outpost.goauthentik.io/auth/nginx
+    nginx.ingress.kubernetes.io/auth-signin: https://{{ $extHost }}/outpost.goauthentik.io/start?rd=$escaped_request_uri
+    nginx.ingress.kubernetes.io/auth-response-headers: {{ include "lib.authResponseHeaders" . }}
+    nginx.ingress.kubernetes.io/auth-proxy-set-headers: {{ include "lib.namespace" . }}/authentik-auth-headers
+    {{- end }}
   {{- end }}
 spec:
   ingressClassName: nginx-external
   rules:
-    - host: {{ .Values.app.domainPrefix }}.{{ .Values.global.domain.public.suffix }}
+    - host: {{ $extHost }}
       http:
         paths:
+          {{- if $ing.authProvider }}
+          # The sign-in round-trip lands here: the session cookie is per-provider, so
+          # it has to be issued on this host rather than on the Authentik one.
+          - path: /outpost.goauthentik.io
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-outpost
+                port:
+                  number: {{ include "lib.authOutpostPort" . }}
+          {{- end }}
           - path: /
             pathType: Prefix
             backend:

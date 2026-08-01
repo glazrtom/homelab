@@ -9,6 +9,13 @@ service:
   name: longhorn-frontend
   port: 80
 
+# Reachable from the internet, but gated by its own Authentik provider rather than
+# the catch-all - only homelab-admins get in. Provider declared in authentik/values.yaml.
+ingress:
+  enabled: true
+  external: true
+  authProvider: longhorn-forward-auth
+
 backup:
   enabled: false # gates the backup-daily RecurringJob; no backup target yet
 bulkClassName: longhorn-bulk

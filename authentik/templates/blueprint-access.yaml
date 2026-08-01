@@ -61,6 +61,37 @@ data:
           group: !KeyOf group-users
           order: 0
 
+      # --- Admin tools: their own provider, so their own allowlist. A direct
+      # external_host match beats the catch-all's cookie_domain match.
+      {{- range $app := .Values.restrictedApps }}
+      {{- $host := $app.host | default (printf "%s.%s" $app.prefix $public) }}
+      - model: authentik_providers_proxy.proxyprovider
+        id: provider-{{ $app.slug }}
+        identifiers:
+          name: {{ $app.slug }}-forward-auth
+        attrs:
+          mode: forward_single
+          external_host: https://{{ $host }}
+          intercept_header_auth: true
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation]]
+
+      - model: authentik_core.application
+        id: app-{{ $app.slug }}
+        identifiers:
+          slug: {{ $app.slug }}
+        attrs:
+          name: {{ $app.name }}
+          provider: !KeyOf provider-{{ $app.slug }}
+          meta_launch_url: https://{{ $host }}
+          policy_engine_mode: any
+
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-{{ $app.slug }}
+          group: !KeyOf group-admins
+          order: 0
+      {{ end }}
       # Matches the connection outpost_connection_discovery auto-creates on startup,
       # by name, so this adopts it rather than adding a duplicate.
       - model: authentik_outposts.kubernetesserviceconnection
@@ -72,7 +103,9 @@ data:
           kubeconfig: {}
           verify_ssl: true
 
-      # service_connection is pinned rather than omitted: nulling it would tear down
+      # Every proxy provider above has to be applied before this entry: !KeyOf only
+      # resolves entries that already have a model instance. service_connection is
+      # pinned rather than omitted - nulling it would tear down
       # ak-outpost-authentik-embedded-outpost and kill global auth for every host.
       - model: authentik_outposts.outpost
         identifiers:
@@ -82,6 +115,9 @@ data:
           service_connection: !KeyOf sc-local
           providers:
             - !KeyOf provider-forward-auth
+            {{- range $app := .Values.restrictedApps }}
+            - !KeyOf provider-{{ $app.slug }}
+            {{- end }}
 
       - model: authentik_core.application
         id: app-ldap
