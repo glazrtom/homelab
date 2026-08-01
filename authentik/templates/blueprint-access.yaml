@@ -109,6 +109,15 @@ data:
             {{- range $v := $variants }}
             - !KeyOf provider-{{ $v.id }}
             {{- end }}
+          # Unlike authentik_host below, authentik_host_browser is what the outpost sends
+          # browsers to for the authorize redirect - it must be the public host, or it
+          # defaults to whatever host an admin last reached Authentik on (auth.internal),
+          # which is unreachable off-LAN.
+          config:
+            authentik_host: http://{{ .Values.service.name }}.{{ include "lib.namespace" . }}.svc.cluster.local/
+            authentik_host_browser: https://{{ .Values.app.domainPrefix }}.{{ $public }}/
+            kubernetes_namespace: {{ include "lib.namespace" . }}
+            kubernetes_service_type: ClusterIP
 
       - model: authentik_core.application
         id: app-ldap

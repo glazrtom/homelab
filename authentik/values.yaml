@@ -40,11 +40,6 @@ gatedApps:
     name: Jellyfin
     prefix: jellyfin
     group: homelab-users
-    # Native TV and mobile clients cannot follow the SSO redirect, so only the web UI is
-    # gated and the API is left to Jellyfin's own LDAP-backed login. RE2 has no lookahead,
-    # so "path does not start with /web" is spelled out.
-    skipPathRegex: |
-      ^/(?:[^w]|w(?:$|[^e]|e(?:$|[^b])))
   - slug: longhorn
     name: Longhorn
     prefix: longhorn
