@@ -256,163 +256,78 @@
     - cloudflare_dns_route.rc != 0
     - "'already exists' not in (cloudflare_dns_route.stderr | default(''))"
 
-# --- e. Token -> cloudflare/secrets/token.yaml --------------------------------
+# --- e. Token -> sealed secret -----------------------------------------------
 
-- name: Fetch the tunnel token
-  ansible.builtin.command: "cloudflared tunnel token {{ cloudflare_tunnel_id }}"
-  register: cloudflare_tunnel_token
+- name: Generate and seal the tunnel token
+  ansible.builtin.command:
+    cmd: "./generate-secret.sh {{ cloudflare_tunnel_id }}"
+    chdir: "{{ path_repo_root }}/cloudflare"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+    SEALED_SECRETS_NAMESPACE: "{{ sealed_secrets_namespace }}"
+    SEALED_SECRETS_NAME: "{{ sealed_secrets_fullname }}"
+  register: cloudflare_generate_secret
   failed_when: false
   changed_when: false
   no_log: true
   when: not cloudflare_skipped
 
-- name: Skip if the tunnel token could not be fetched
+- name: Skip if the tunnel token could not be sealed
   ansible.builtin.set_fact:
     cloudflare_skipped: true
-    cloudflare_skip_reason: "`cloudflared tunnel token` failed"
+    cloudflare_skip_reason: "cloudflare/generate-secret.sh failed"
   when:
     - not cloudflare_skipped
-    - (cloudflare_tunnel_token.rc != 0) or (cloudflare_tunnel_token.stdout | trim | length == 0)
+    - cloudflare_generate_secret.rc != 0
 
-- name: Write and seal the token secret
+# --- f. Commit -----------------------------------------------------------
+
+- name: Commit the sealed tunnel token if it changed
   when: not cloudflare_skipped
   block:
-    - name: Ensure the plaintext secrets directory exists
-      ansible.builtin.file:
-        path: "{{ cloudflare_plaintext_path | dirname }}"
-        state: directory
-        mode: "0700"
-
-    - name: Check for a previous plaintext secret
-      ansible.builtin.stat:
-        path: "{{ cloudflare_plaintext_path }}"
-      register: cloudflare_plaintext_file
-
-    - name: Read the previous plaintext secret
-      ansible.builtin.slurp:
-        src: "{{ cloudflare_plaintext_path }}"
-      register: cloudflare_plaintext_before
-      when: cloudflare_plaintext_file.stat.exists
-      no_log: true
-
-    - name: Render the plaintext Secret manifest
+    - name: Check whether the sealed secret actually changed
       ansible.builtin.command:
-        cmd: >-
-          kubectl create secret generic {{ cloudflare_secret_name }}
-          --namespace {{ cloudflare_namespace }}
-          --from-literal=token={{ cloudflare_tunnel_token.stdout | trim }}
-          --dry-run=client -o yaml
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
+        cmd: "git status --porcelain -- {{ cloudflare_sealed_secret_rel_path }}"
+        chdir: "{{ path_repo_root }}"
+      register: cloudflare_sealed_git_status
       changed_when: false
-      no_log: true
-      register: cloudflare_plain_secret
 
-    - name: Write the plaintext secret
-      ansible.builtin.copy:
-        content: "{{ cloudflare_plain_secret.stdout }}\n"
-        dest: "{{ cloudflare_plaintext_path }}"
-        mode: "0600"
-      no_log: true
-
-    # --- f. Seal + commit -----------------------------------------------
-
-    - name: Check whether a sealed secret is already committed
-      ansible.builtin.stat:
-        path: "{{ cloudflare_sealed_secret_path }}"
-      register: cloudflare_sealed_secret_file
-
-    - name: Validate the committed sealed secret against the live controller
-      ansible.builtin.command:
-        cmd: >-
-          kubeseal --kubeconfig {{ kubeconfig_path }}
-          --controller-namespace {{ sealed_secrets_namespace }}
-          --controller-name {{ sealed_secrets_fullname }}
-          --validate
-      args:
-        stdin: "{{ lookup('file', cloudflare_sealed_secret_path) }}"
-      environment:
-        KUBECONFIG: "{{ kubeconfig_path }}"
-      register: cloudflare_sealed_secret_validate
-      failed_when: false
-      changed_when: false
-      when: cloudflare_sealed_secret_file.stat.exists
-
-    - name: Determine whether resealing is needed
-      ansible.builtin.set_fact:
-        cloudflare_needs_reseal: >-
-          {{
-            not cloudflare_sealed_secret_file.stat.exists or
-            cloudflare_sealed_secret_validate.rc != 0 or
-            not cloudflare_plaintext_file.stat.exists or
-            (cloudflare_plaintext_before.content | b64decode) != (cloudflare_plain_secret.stdout + "\n")
-          }}
-      no_log: true
-
-    - name: Reseal, commit and push the tunnel token
-      when: cloudflare_needs_reseal | bool
+    - name: Commit and push the changed sealed secret
+      when: cloudflare_sealed_git_status.stdout | trim | length > 0
       block:
-        - name: Seal the Secret with kubeseal
-          ansible.builtin.command:
-            cmd: >-
-              kubeseal --kubeconfig {{ kubeconfig_path }}
-              --controller-namespace {{ sealed_secrets_namespace }}
-              --controller-name {{ sealed_secrets_fullname }}
-              --format yaml
-          args:
-            stdin: "{{ cloudflare_plain_secret.stdout }}"
-          changed_when: false
-          no_log: true
-          register: cloudflare_sealed_secret
+        - name: Prompt whether to commit the sealed secret
+          ansible.builtin.pause:
+            prompt: "Commit the updated Cloudflare tunnel sealed secret? [y/N]"
+          register: cloudflare_commit_prompt
 
-        - name: Write the sealed secret into the repo
-          ansible.builtin.copy:
-            content: "{{ cloudflare_sealed_secret.stdout }}\n"
-            dest: "{{ cloudflare_sealed_secret_path }}"
-
-        - name: Check whether the sealed secret actually changed
-          ansible.builtin.command:
-            cmd: "git status --porcelain -- {{ cloudflare_sealed_secret_rel_path }}"
-            chdir: "{{ path_repo_root }}"
-          register: cloudflare_sealed_git_status
-          changed_when: false
-
-        - name: Commit and push the changed sealed secret
-          when: cloudflare_sealed_git_status.stdout | trim | length > 0
+        - name: Stage, commit and push
+          when: (cloudflare_commit_prompt.user_input | default('') | trim | lower) in ['y', 'yes']
           block:
-            - name: Prompt whether to commit the sealed secret
+            - name: Stage the sealed secret
+              ansible.builtin.command:
+                cmd: git add -- "{{ cloudflare_sealed_secret_rel_path }}"
+                chdir: "{{ path_repo_root }}"
+
+            - name: Commit the sealed secret
+              ansible.builtin.command:
+                cmd: git commit -m "Update Cloudflare tunnel sealed secret" -- "{{ cloudflare_sealed_secret_rel_path }}"
+                chdir: "{{ path_repo_root }}"
+
+            - name: Prompt whether to push the commit
               ansible.builtin.pause:
-                prompt: "Commit the updated Cloudflare tunnel sealed secret? [y/N]"
-              register: cloudflare_commit_prompt
+                prompt: "Push the commit to origin? [y/N]"
+              register: cloudflare_push_prompt
 
-            - name: Stage, commit and push
-              when: (cloudflare_commit_prompt.user_input | default('') | trim | lower) in ['y', 'yes']
-              block:
-                - name: Stage the sealed secret
-                  ansible.builtin.command:
-                    cmd: git add -- "{{ cloudflare_sealed_secret_rel_path }}"
-                    chdir: "{{ path_repo_root }}"
+            - name: Push the commit
+              ansible.builtin.command:
+                cmd: git push
+                chdir: "{{ path_repo_root }}"
+              when: (cloudflare_push_prompt.user_input | default('') | trim | lower) in ['y', 'yes']
 
-                - name: Commit the sealed secret
-                  ansible.builtin.command:
-                    cmd: git commit -m "Update Cloudflare tunnel sealed secret" -- "{{ cloudflare_sealed_secret_rel_path }}"
-                    chdir: "{{ path_repo_root }}"
-
-                - name: Prompt whether to push the commit
-                  ansible.builtin.pause:
-                    prompt: "Push the commit to origin? [y/N]"
-                  register: cloudflare_push_prompt
-
-                - name: Push the commit
-                  ansible.builtin.command:
-                    cmd: git push
-                    chdir: "{{ path_repo_root }}"
-                  when: (cloudflare_push_prompt.user_input | default('') | trim | lower) in ['y', 'yes']
-
-            - name: Warn that the sealed secret was left uncommitted
-              ansible.builtin.debug:
-                msg: "Sealed secret left uncommitted in the working tree: {{ cloudflare_sealed_secret_rel_path }}"
-              when: (cloudflare_commit_prompt.user_input | default('') | trim | lower) not in ['y', 'yes']
+        - name: Warn that the sealed secret was left uncommitted
+          ansible.builtin.debug:
+            msg: "Sealed secret left uncommitted in the working tree: {{ cloudflare_sealed_secret_rel_path }}"
+          when: (cloudflare_commit_prompt.user_input | default('') | trim | lower) not in ['y', 'yes']
 
 # --- Report ------------------------------------------------------------------
 

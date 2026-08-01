@@ -1,6 +1,3 @@
-cloudflare_namespace: cloudflared
-cloudflare_secret_name: cloudflared-token
-
 sealed_secrets_namespace: kube-system
 sealed_secrets_fullname: sealed-secrets-controller
 
@@ -10,8 +7,6 @@ cloudflare_sealed_secret_path: "{{ path_repo_root }}/{{ cloudflare_sealed_secret
 cloudflare_tunnel_name: homelab
 cloudflare_cli_config_dir: "{{ path_home }}/.cloudflared"
 cloudflare_cli_cert: "{{ cloudflare_cli_config_dir }}/cert.pem"
-cloudflare_plaintext_rel_path: cloudflare/secrets/token.yaml
-cloudflare_plaintext_path: "{{ path_repo_root }}/{{ cloudflare_plaintext_rel_path }}"
 cloudflare_route_dns: true
 cloudflare_route_dns_overwrite: true
 
