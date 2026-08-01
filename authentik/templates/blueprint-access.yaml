@@ -119,16 +119,9 @@ data:
             kubernetes_namespace: {{ include "lib.namespace" . }}
             kubernetes_service_type: ClusterIP
 
-      - model: authentik_core.application
-        id: app-ldap
-        identifiers:
-          slug: ldap
-        attrs:
-          name: LDAP
-          policy_engine_mode: any
-
-      # The application link lives on the provider - Application has no writable
-      # backchannel_providers field, only the reverse relation.
+      # The backchannel link is only writable from the Application side
+      # (LDAPProviderSerializer doesn't expose it), so the provider must be
+      # declared first for !KeyOf provider-ldap to resolve below.
       - model: authentik_providers_ldap.ldapprovider
         id: provider-ldap
         identifiers:
@@ -140,8 +133,16 @@ data:
           bind_mode: cached
           search_mode: cached
           mfa_support: false
-          is_backchannel: true
-          backchannel_application: !KeyOf app-ldap
+
+      - model: authentik_core.application
+        id: app-ldap
+        identifiers:
+          slug: ldap
+        attrs:
+          name: LDAP
+          policy_engine_mode: any
+          backchannel_providers:
+            - !KeyOf provider-ldap
 
       - model: authentik_policies.policybinding
         identifiers:
