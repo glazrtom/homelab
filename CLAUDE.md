@@ -98,6 +98,12 @@ cluster — `ansible/roles/secrets` does this automatically (see Provisioning be
 `**/secrets/` is git-ignored at the repo root; never commit plaintext from it. Some
 bootstrap secrets (TLS, Tailscale) are instead created imperatively — see `init.sh`.
 
+`authentik/` has two such scripts, split so each can be (re)generated independently:
+`generate-secret.sh` owns `authentik-secrets` (Postgres password, Django secret key —
+must never be re-rolled on a running install), and `generate-bootstrap-secret.sh` owns
+`authentik-bootstrap` (akadmin bootstrap password/token/email, LDAP bind key — safe to
+(re)generate later even if `authentik-secrets` already exists).
+
 `base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
 (emberstack), which mirrors it into other namespaces. `base/generate-windscribe-secret.sh`
 does the same for the `windscribe-auth` VPN credential (namespace `default`), mirroring it
