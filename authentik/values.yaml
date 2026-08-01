@@ -18,20 +18,6 @@ ingress:
     # the nginx-internal copy, which has no global auth.
     nginx.ingress.kubernetes.io/enable-global-auth: "false"
 
-# Hosts that gate on homelab-admins rather than the catch-all forward auth. Each one
-# also needs ingress.authProvider: <slug>-forward-auth on its own chart, or nothing
-# points at the provider declared here.
-restrictedApps:
-  - slug: longhorn
-    name: Longhorn
-    prefix: longhorn
-  - slug: argocd
-    name: ArgoCD
-    # Legacy domain predating global.domain.public.suffix, hardcoded the same way in
-    # argocd/argocd-ingress-external.yaml. Moving both to the public suffix is its
-    # own change; getting it wrong here loses external access to ArgoCD.
-    host: argo.glazrtom.fun
-
 authentik:
   global:
     # Appended after the chart's own config secret, so these keys win.

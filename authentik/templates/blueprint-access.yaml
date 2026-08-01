@@ -1,5 +1,12 @@
 {{- $public := .Values.global.domain.public.suffix }}
-{{- $authHost := printf "%s.%s" .Values.app.domainPrefix $public }}
+{{- $apps := .Values.global.externalApps }}
+{{- $ldapGroup := .Values.global.ldapGroup }}
+{{- $groups := list $ldapGroup }}
+{{- range $app := $apps }}{{ $groups = append $groups $app.group }}{{ end }}
+{{- $groups = $groups | uniq | sortAlpha }}
+{{- if lt (len $apps) 2 }}
+{{- fail "global.externalApps needs at least two entries: a proxy outpost serving a single application serves it for any hostname, which would defeat the per-host gating" }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,53 +24,21 @@ data:
     metadata:
       name: homelab - Access
     entries:
-      # GroupSerializer.users defaults to [] when omitted and the importer builds a
-      # non-partial serializer, so a re-apply would empty the group.
+      # Membership stays a UI concern. GroupSerializer.users defaults to [] when
+      # omitted and the importer builds a non-partial serializer, so without
+      # state: created a re-apply would empty every group.
+      {{- range $group := $groups }}
       - model: authentik_core.group
-        id: group-users
+        id: group-{{ $group }}
         state: created
         identifiers:
-          name: homelab-users
-
-      - model: authentik_core.group
-        id: group-admins
-        state: created
-        identifiers:
-          name: homelab-admins
-
-      # Catch-all forward auth for every *.{{ $public }} host that does not have a
-      # provider of its own. Matched on cookie_domain suffix, not external_host.
-      - model: authentik_providers_proxy.proxyprovider
-        id: provider-forward-auth
-        identifiers:
-          name: homelab-forward-auth
-        attrs:
-          mode: forward_domain
-          external_host: https://{{ $authHost }}
-          cookie_domain: {{ $public }}
-          intercept_header_auth: true
-          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation]]
-
-      - model: authentik_core.application
-        id: app-homelab
-        identifiers:
-          slug: homelab
-        attrs:
-          name: Homelab
-          provider: !KeyOf provider-forward-auth
-          meta_launch_url: https://{{ $authHost }}
-          policy_engine_mode: any
-
-      - model: authentik_policies.policybinding
-        identifiers:
-          target: !KeyOf app-homelab
-          group: !KeyOf group-users
-          order: 0
-
-      # --- Admin tools: their own provider, so their own allowlist. A direct
-      # external_host match beats the catch-all's cookie_domain match.
-      {{- range $app := .Values.restrictedApps }}
+          name: {{ $group }}
+      {{ end }}
+      # --- One provider per external host, no catch-all. A host absent from
+      # global.externalApps matches nothing and the outpost answers 400, which nginx
+      # turns into a 403 - so forgetting an app, or renaming one without updating the
+      # registry, denies access rather than quietly widening it.
+      {{- range $app := $apps }}
       {{- $host := $app.host | default (printf "%s.%s" $app.prefix $public) }}
       - model: authentik_providers_proxy.proxyprovider
         id: provider-{{ $app.slug }}
@@ -89,7 +64,7 @@ data:
       - model: authentik_policies.policybinding
         identifiers:
           target: !KeyOf app-{{ $app.slug }}
-          group: !KeyOf group-admins
+          group: !KeyOf group-{{ $app.group }}
           order: 0
       {{ end }}
       # Matches the connection outpost_connection_discovery auto-creates on startup,
@@ -106,7 +81,7 @@ data:
       # Every proxy provider above has to be applied before this entry: !KeyOf only
       # resolves entries that already have a model instance. service_connection is
       # pinned rather than omitted - nulling it would tear down
-      # ak-outpost-authentik-embedded-outpost and kill global auth for every host.
+      # ak-outpost-authentik-embedded-outpost and deny every gated host.
       - model: authentik_outposts.outpost
         identifiers:
           managed: goauthentik.io/outposts/embedded
@@ -114,8 +89,7 @@ data:
           type: proxy
           service_connection: !KeyOf sc-local
           providers:
-            - !KeyOf provider-forward-auth
-            {{- range $app := .Values.restrictedApps }}
+            {{- range $app := $apps }}
             - !KeyOf provider-{{ $app.slug }}
             {{- end }}
 
@@ -146,7 +120,7 @@ data:
       - model: authentik_policies.policybinding
         identifiers:
           target: !KeyOf app-ldap
-          group: !KeyOf group-users
+          group: !KeyOf group-{{ $ldapGroup }}
           order: 0
 
       # authentik_host must be the in-cluster URL: the public one is forward-auth'd,

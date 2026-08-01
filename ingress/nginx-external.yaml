@@ -33,14 +33,16 @@ spec:
         proxySetHeaders:
           X-Forwarded-Proto: "$real_scheme"
 
-        # Global Authentik
-        # Authentik resolves which application gates a host from X-Forwarded-Host,
-        # so the auth subrequest must carry it - nginx would otherwise send the
-        # outpost's own service address. Hosts exempt themselves with
-        # nginx.ingress.kubernetes.io/enable-global-auth: "false".
+        # Deny by default. There is no catch-all Authentik provider, so this sends any
+        # host without its own auth-url to an outpost that has no application for it;
+        # the outpost answers 400 and nginx turns that into a 403. Gated hosts override
+        # this per Ingress via ingress.authProvider (lib.ingress), and hosts that must
+        # not be gated opt out with enable-global-auth: "false".
+        #
+        # X-Forwarded-Host is what the outpost matches a host on - nginx would
+        # otherwise send it the outpost's own service address. No global-auth-signin:
+        # every host reaching this path is a denial, not a login.
         global-auth-snippet: |
           proxy_set_header X-Forwarded-Host $http_host;
         enable-forwarded-headers: "true"
         global-auth-url: "http://ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
-        global-auth-signin: "https://auth.glazrtom.cz/outpost.goauthentik.io/start?rd=$escaped_request_uri"
-        global-auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid"

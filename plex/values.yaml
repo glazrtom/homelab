@@ -11,10 +11,13 @@ env:
 
 domainPrefix: plex
 
-# Plex clients can't follow a browser SSO redirect, so this is where an
-# nginx.ingress.kubernetes.io/enable-global-auth: "false" goes if they break.
+# Plex clients can't follow a browser SSO redirect, so this host is not gated by
+# Authentik at all - it relies on Plex's own accounts. Opting out has to be explicit:
+# without this the controller's default sends the host to an outpost that has no
+# application for it, and every request is denied.
 ingress:
-  annotations: {}
+  annotations:
+    nginx.ingress.kubernetes.io/enable-global-auth: "false"
 
 volumes:
   config:

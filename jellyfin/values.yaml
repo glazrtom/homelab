@@ -12,9 +12,10 @@ app:
 
 ingress:
   enabled: true
-  # Behind the catch-all forward auth, so browser access gets SSO but native TV and
-  # mobile clients only work on the LAN - they can't follow the redirect.
+  # Browser access over the tunnel gets SSO; native TV and mobile clients can't follow
+  # the redirect, so they stay on the internal host.
   external: true
+  authProvider: jellyfin-forward-auth
 
 volumes:
   config:
