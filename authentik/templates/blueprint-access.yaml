@@ -1,11 +1,25 @@
 {{- $public := .Values.global.domain.public.suffix }}
-{{- $apps := .Values.global.externalApps }}
-{{- $ldapGroup := .Values.global.ldapGroup }}
+{{- $internal := .Values.global.domain.internal.suffix }}
+{{- $ldapGroup := .Values.ldapGroup }}
 {{- $groups := list $ldapGroup }}
-{{- range $app := $apps }}{{ $groups = append $groups $app.group }}{{ end }}
+
+{{/*
+Flatten gatedApps into one entry per host. A proxy provider carries a single
+external_host and the outpost keys its application map on it, so covering both the
+public and the internal host of a service takes two providers - generated here from
+one gatedApps entry so their policy binding is necessarily identical.
+*/}}
+{{- $variants := list }}
+{{- range $app := .Values.gatedApps }}
+{{- $groups = append $groups $app.group }}
+{{- $extHost := $app.externalHost | default (printf "%s.%s" $app.prefix $public) }}
+{{- $variants = append $variants (dict "id" $app.slug "name" $app.name "group" $app.group "url" (printf "https://%s" $extHost)) }}
+{{- $variants = append $variants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "group" $app.group "url" (printf "http://%s.%s" $app.prefix $internal)) }}
+{{- end }}
 {{- $groups = $groups | uniq | sortAlpha }}
-{{- if lt (len $apps) 2 }}
-{{- fail "global.externalApps needs at least two entries: a proxy outpost serving a single application serves it for any hostname, which would defeat the per-host gating" }}
+
+{{- if lt (len $variants) 2 }}
+{{- fail "gatedApps must produce at least two applications: a proxy outpost serving a single application serves it for any hostname, which would defeat the per-host gating" }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap
@@ -34,37 +48,36 @@ data:
         identifiers:
           name: {{ $group }}
       {{ end }}
-      # --- One provider per external host, no catch-all. A host absent from
-      # global.externalApps matches nothing and the outpost answers 400, which nginx
-      # turns into a 403 - so forgetting an app, or renaming one without updating the
-      # registry, denies access rather than quietly widening it.
-      {{- range $app := $apps }}
-      {{- $host := $app.host | default (printf "%s.%s" $app.prefix $public) }}
+      # --- One provider per host, no catch-all. A host absent from gatedApps matches
+      # nothing and the outpost answers 400, which nginx turns into a 403 - so
+      # forgetting an app, or renaming one without updating the registry, denies access
+      # rather than quietly widening it.
+      {{- range $v := $variants }}
       - model: authentik_providers_proxy.proxyprovider
-        id: provider-{{ $app.slug }}
+        id: provider-{{ $v.id }}
         identifiers:
-          name: {{ $app.slug }}-forward-auth
+          name: {{ $v.id }}-forward-auth
         attrs:
           mode: forward_single
-          external_host: https://{{ $host }}
+          external_host: {{ $v.url }}
           intercept_header_auth: true
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation]]
 
       - model: authentik_core.application
-        id: app-{{ $app.slug }}
+        id: app-{{ $v.id }}
         identifiers:
-          slug: {{ $app.slug }}
+          slug: {{ $v.id }}
         attrs:
-          name: {{ $app.name }}
-          provider: !KeyOf provider-{{ $app.slug }}
-          meta_launch_url: https://{{ $host }}
+          name: {{ $v.name }}
+          provider: !KeyOf provider-{{ $v.id }}
+          meta_launch_url: {{ $v.url }}
           policy_engine_mode: any
 
       - model: authentik_policies.policybinding
         identifiers:
-          target: !KeyOf app-{{ $app.slug }}
-          group: !KeyOf group-{{ $app.group }}
+          target: !KeyOf app-{{ $v.id }}
+          group: !KeyOf group-{{ $v.group }}
           order: 0
       {{ end }}
       # Matches the connection outpost_connection_discovery auto-creates on startup,
@@ -89,8 +102,8 @@ data:
           type: proxy
           service_connection: !KeyOf sc-local
           providers:
-            {{- range $app := $apps }}
-            - !KeyOf provider-{{ $app.slug }}
+            {{- range $v := $variants }}
+            - !KeyOf provider-{{ $v.id }}
             {{- end }}
 
       - model: authentik_core.application

@@ -18,6 +18,39 @@ ingress:
     # the nginx-internal copy, which has no global auth.
     nginx.ingress.kubernetes.io/enable-global-auth: "false"
 
+# Whose accounts appear in the LDAP directory, and can therefore log into Jellyfin.
+ldapGroup: homelab-users
+
+# Every service Authentik gates, and the group allowed to reach it. Each entry becomes
+# a pair of forward_single providers - one for the public host, one for the internal
+# one - each with its own application, both bound to the same group. Both halves come
+# from one entry, so the rules can't drift apart.
+#
+# The internal half is not wired up yet: nginx-internal does no auth today. The
+# providers exist so that turning it on later is an ingress change rather than a policy
+# decision taken a second time.
+#
+# There is deliberately no catch-all provider. A host missing from this list, or
+# renamed without updating it, matches nothing and the outpost denies it. Hosts that
+# must not be gated at all (plex, authentik itself) opt out explicitly with
+# nginx.ingress.kubernetes.io/enable-global-auth: "false".
+gatedApps:
+  - slug: jellyfin
+    name: Jellyfin
+    prefix: jellyfin
+    group: homelab-users
+  - slug: longhorn
+    name: Longhorn
+    prefix: longhorn
+    group: homelab-admins
+  - slug: argocd
+    name: ArgoCD
+    prefix: argo
+    group: homelab-admins
+    # Legacy domain predating global.domain.public.suffix, hardcoded the same way in
+    # argocd/argocd-ingress-external.yaml. Moving both is its own change.
+    externalHost: argo.glazrtom.fun
+
 authentik:
   global:
     # Appended after the chart's own config secret, so these keys win.

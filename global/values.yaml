@@ -13,35 +13,6 @@ global:
 
   revisionHistoryLimit: 1
 
-  # Every host reachable from the internet that Authentik gates, and which group may
-  # reach it. authentik/ turns each entry into a forward_single proxy provider,
-  # application and policy binding; the app's own chart points at it with
-  # ingress.authProvider: <slug>-forward-auth.
-  #
-  # There is deliberately no catch-all provider, so a host missing from this list -
-  # or renamed without updating it - matches nothing and the outpost denies it with a
-  # 400. Hosts that must not be gated at all (plex, authentik itself) opt out
-  # explicitly with nginx.ingress.kubernetes.io/enable-global-auth: "false".
-  # Whose accounts appear in the LDAP directory, and can therefore log into Jellyfin.
-  # Not an external host, so it is not part of externalApps below.
-  ldapGroup: homelab-users
-
-  externalApps:
-    - slug: jellyfin
-      name: Jellyfin
-      prefix: jellyfin
-      group: homelab-users
-    - slug: longhorn
-      name: Longhorn
-      prefix: longhorn
-      group: homelab-admins
-    - slug: argocd
-      name: ArgoCD
-      group: homelab-admins
-      # Legacy domain predating domain.public.suffix, hardcoded the same way in
-      # argocd/argocd-ingress-external.yaml. Moving both is its own change.
-      host: argo.glazrtom.fun
-
   sharedMedia:
     name: shared-media
     size: 100Gi              # PV/PVC capacity
