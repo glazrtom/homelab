@@ -26,9 +26,10 @@ ldapGroup: homelab-users
 # one - each with its own application, both bound to the same group. Both halves come
 # from one entry, so the rules can't drift apart.
 #
-# The internal half is not wired up yet: nginx-internal does no auth today. The
-# providers exist so that turning it on later is an ingress change rather than a policy
-# decision taken a second time.
+# Internal-only services are listed too. The internal half is not wired up yet -
+# nginx-internal does no auth today - so their providers see no traffic; they exist so
+# that turning it on later is an ingress change rather than a policy decision taken a
+# second time.
 #
 # There is deliberately no catch-all provider. A host missing from this list, or
 # renamed without updating it, matches nothing and the outpost denies it. Hosts that
@@ -39,6 +40,11 @@ gatedApps:
     name: Jellyfin
     prefix: jellyfin
     group: homelab-users
+    # Native TV and mobile clients cannot follow the SSO redirect, so only the web UI is
+    # gated and the API is left to Jellyfin's own LDAP-backed login. RE2 has no lookahead,
+    # so "path does not start with /web" is spelled out.
+    skipPathRegex: |
+      ^/(?:[^w]|w(?:$|[^e]|e(?:$|[^b])))
   - slug: longhorn
     name: Longhorn
     prefix: longhorn
@@ -47,9 +53,26 @@ gatedApps:
     name: ArgoCD
     prefix: argo
     group: homelab-admins
-    # Legacy domain predating global.domain.public.suffix, hardcoded the same way in
-    # argocd/argocd-ingress-external.yaml. Moving both is its own change.
-    externalHost: argo.glazrtom.fun
+  - slug: pihole
+    name: Pi-hole
+    prefix: pihole
+    group: homelab-admins
+  - slug: transmission
+    name: Transmission
+    prefix: transmission
+    group: homelab-admins
+  - slug: prowlarr
+    name: Prowlarr
+    prefix: prowlarr
+    group: homelab-admins
+  - slug: radarr
+    name: Radarr
+    prefix: radarr
+    group: homelab-personal
+  - slug: sonarr
+    name: Sonarr
+    prefix: sonarr
+    group: homelab-personal
 
 authentik:
   global:

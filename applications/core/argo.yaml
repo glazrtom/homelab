@@ -13,6 +13,10 @@ spec:
     path: argocd
     repoURL: https://github.com/glazrtom/homelab.git
     targetRevision: HEAD
+    helm:
+      valueFiles:
+        - ../global/values.yaml
+        - values.yaml
   destination:
     namespace: argocd
     server: https://kubernetes.default.svc

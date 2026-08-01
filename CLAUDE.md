@@ -49,12 +49,19 @@ Services typically expose **two** Ingress objects (see `plex/templates/ingress.y
 - External: `ingressClassName: nginx-external`, host `<prefix>.<global.domain.public.suffix>`.
 
 Path from the internet: **Cloudflare Tunnel (`cloudflare/`) → nginx-external → service.**
-The `nginx-external` controller enforces **Authentik forward-auth on every external host**
-via `global-auth-*` snippets in `ingress/nginx-external.yaml` (auth URL points at the
-Authentik embedded outpost; `auth.glazrtom.cz` is exempted). It also maps Cloudflare's
-`CF-Visitor` header to a real scheme and rewrites `X-Forwarded-Proto/Host`. This is the
-"global domain auth" that recent commits iterate on — edit it there. `nginx-internal`
-has no auth.
+External hosts are **deny-by-default**: `authentik/values.yaml` `gatedApps` is the single
+registry of gated hosts and the group allowed in, and the blueprint generates one
+`forward_single` proxy provider (plus application and policy binding) per host from it.
+A host missing from that list matches no application, and the `global-auth-url` in
+`ingress/nginx-external.yaml` turns that into a 403. A gated chart sets
+`ingress.authProvider` and renders `lib.authOutpost`; that pair adds the Ingress-level
+`auth-url`, the `/outpost.goauthentik.io` path (`forward_single` issues its cookie on the
+app's own host) and the in-namespace `ExternalName` alias for the one embedded outpost in
+`authentik`. Hosts that must not be gated (plex, Authentik itself) opt out with
+`nginx.ingress.kubernetes.io/enable-global-auth: "false"`. `nginx-external` also maps
+Cloudflare's `CF-Visitor` header to a real scheme and rewrites `X-Forwarded-Proto/Host`.
+`nginx-internal` has no auth — the internal half of each `gatedApps` entry is generated
+but unwired.
 
 Authentik (SSO/IdP) is deployed from `authentik/` (official upstream chart, with a
 bundled postgres, refactored onto the `lib/` templates like the other apps).

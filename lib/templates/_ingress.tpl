@@ -34,7 +34,7 @@ spec:
                 port:
                   number: {{ $port }}
 {{- if $ing.external }}
-{{- $extHost := printf "%s.%s" .Values.app.domainPrefix .Values.global.domain.public.suffix }}
+{{- $extHost := $ing.externalHost | default (printf "%s.%s" .Values.app.domainPrefix .Values.global.domain.public.suffix) }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

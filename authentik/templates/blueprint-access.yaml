@@ -13,8 +13,8 @@ one gatedApps entry so their policy binding is necessarily identical.
 {{- range $app := .Values.gatedApps }}
 {{- $groups = append $groups $app.group }}
 {{- $extHost := $app.externalHost | default (printf "%s.%s" $app.prefix $public) }}
-{{- $variants = append $variants (dict "id" $app.slug "name" $app.name "group" $app.group "url" (printf "https://%s" $extHost)) }}
-{{- $variants = append $variants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "group" $app.group "url" (printf "http://%s.%s" $app.prefix $internal)) }}
+{{- $variants = append $variants (dict "id" $app.slug "name" $app.name "group" $app.group "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
+{{- $variants = append $variants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "group" $app.group "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
 {{- end }}
 {{- $groups = $groups | uniq | sortAlpha }}
 
@@ -61,6 +61,10 @@ data:
           mode: forward_single
           external_host: {{ $v.url }}
           intercept_header_auth: true
+          {{- with $v.skip }}
+          skip_path_regex: |
+            {{- . | trim | nindent 12 }}
+          {{- end }}
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation]]
 
