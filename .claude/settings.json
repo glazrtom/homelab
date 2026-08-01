@@ -94,7 +94,7 @@
       "Bash(ansible-playbook*)",
       "Bash(ansible *)",
       "Bash(ssh *)",
-      "Bash(cloudflared *)"
+      "Bash(*/generate-secret.sh*)"
     ],
     "deny": [
       "Bash(kubectl delete*)",
@@ -102,7 +102,6 @@
       "Bash(git push --force*)",
       "Bash(git reset --hard*)",
       "Bash(sudo *)",
-      "Bash(*/generate-secret.sh*)",
       "Read(./*/secrets/**)"
     ]
   }
