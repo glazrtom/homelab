@@ -66,7 +66,7 @@ data:
             {{- . | trim | nindent 12 }}
           {{- end }}
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
 
       - model: authentik_core.application
         id: app-{{ $v.id }}
