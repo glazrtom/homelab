@@ -12,7 +12,9 @@ app:
 
 ingress:
   enabled: true
-  external: false
+  # Behind the catch-all forward auth, so browser access gets SSO but native TV and
+  # mobile clients only work on the LAN - they can't follow the redirect.
+  external: true
 
 volumes:
   config:
