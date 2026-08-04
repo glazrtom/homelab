@@ -1,0 +1,31 @@
+{{- range $name, $c := .Values.controllers }}
+{{- $cls := index $.Values.global.ingress $name }}
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: {{ $cls.className }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  chart: {{ $.Values.chart.name }}
+  repo: {{ $.Values.chart.repo }}
+  targetNamespace: {{ $.Values.namespace }}
+  version: {{ $.Values.chart.version | quote }}
+  valuesContent: |-
+    controller:
+      ingressClassResource:
+        name: {{ $cls.className }}
+        default: false
+      ingressClass: {{ $cls.className }}
+      service:
+{{- if $cls.loadBalancerIP }}
+        annotations:
+          metallb.universe.tf/loadBalancerIPs: {{ $cls.loadBalancerIP | quote }}
+{{- else }}
+        type: ClusterIP
+{{- end }}
+{{- if $c.configTemplate }}
+      config:
+{{ include $c.configTemplate $ | indent 8 }}
+{{- end }}
+---
+{{- end }}

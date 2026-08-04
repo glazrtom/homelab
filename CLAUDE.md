@@ -29,8 +29,11 @@ Makefile/Taskfile, and no build step.
 `global/values.yaml` holds cluster-wide values consumed by charts:
 `global.user` (uid/gid 1001), `global.timezone` (Europe/Prague), the domain
 suffixes `global.domain.internal.suffix: internal` and
-`global.domain.public.suffix: glazrtom.cz`, and `global.sharedMedia` (name/size of the
-shared Longhorn media volume — see Storage below).
+`global.domain.public.suffix: glazrtom.cz`, `global.sharedMedia` (name/size of the
+shared Longhorn media volume — see Storage below), `global.ingress.{internal,external}.{className,loadBalancerIP}`
+(the two IngressClass names and their MetalLB LB IPs — see Networking below), and
+`global.authentik.{namespace,outpost.{service,port}}` (the one embedded outpost's
+address, consumed by both the ingress chart's global auth and `lib.authOutpost*`).
 
 Charts that need these values layer them via the ArgoCD `helm.valueFiles` list, e.g.
 `authentik.yaml` and the media ApplicationSet list `../global/values.yaml` first, then
@@ -40,9 +43,12 @@ Charts that need these values layer them via the ArgoCD `helm.valueFiles` list, 
 
 ## Networking: dual ingress + global auth
 
-Two `ingress-nginx` controllers run with separate IngressClasses (`ingress/nginx-external.yaml`,
-`ingress/nginx-internal.yaml`), deployed as k3s-native `HelmChart` CRs (not ArgoCD apps).
-Services typically expose **two** Ingress objects (see `plex/templates/ingress.yaml` and
+Two `ingress-nginx` controllers run with separate IngressClasses, one per key under
+`global.ingress` (`internal`/`external`). The `ingress/` chart renders one k3s-native
+`helm.cattle.io/v1` `HelmChart` CR per controller (`ingress/templates/helmchart.yaml`);
+controller-level config (forwarded headers, the Cloudflare scheme map, global auth) lives
+in `ingress/templates/_config.tpl`. Services typically expose **two** Ingress objects
+(see `plex/templates/ingress.yaml` and
 `ingress-external.yaml`):
 
 - Internal: `ingressClassName: nginx-internal`, host `<prefix>.internal` (LAN only, no auth).
@@ -53,7 +59,7 @@ External hosts are **deny-by-default**: `authentik/values.yaml` `gatedApps` is t
 registry of gated hosts and the group allowed in, and the blueprint generates one
 `forward_single` proxy provider (plus application and policy binding) per host from it.
 A host missing from that list matches no application, and the `global-auth-url` in
-`ingress/nginx-external.yaml` turns that into a 403. A gated chart sets
+`ingress/templates/_config.tpl` turns that into a 403. A gated chart sets
 `ingress.authProvider` and renders `lib.authOutpost`; that pair adds the Ingress-level
 `auth-url`, the `/outpost.goauthentik.io` path (`forward_single` issues its cookie on the
 app's own host) and the in-namespace `ExternalName` alias for the one embedded outpost in

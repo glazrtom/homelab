@@ -13,6 +13,10 @@ spec:
     path: ingress
     repoURL: https://github.com/glazrtom/homelab.git
     targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+        - ../global/values.yaml
   destination:
     namespace: ingress
     server: https://kubernetes.default.svc

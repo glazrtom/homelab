@@ -13,6 +13,21 @@ global:
 
   revisionHistoryLimit: 1
 
+  ingress:
+    internal:
+      className: nginx-internal
+      loadBalancerIP: "10.0.0.150"
+    external:
+      className: nginx-external
+
+  # The one embedded outpost. Consumed by the nginx-external global-auth-url and by
+  # lib.authOutpost* for the per-app auth-url / ExternalName alias.
+  authentik:
+    namespace: authentik
+    outpost:
+      service: ak-outpost-authentik-embedded-outpost
+      port: 9000
+
   sharedMedia:
     name: shared-media
     size: 100Gi              # PV/PVC capacity

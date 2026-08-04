@@ -4,7 +4,7 @@ metadata:
   name: calibre-ingress
   namespace: {{ .Values.namespace }}
 spec:
-  ingressClassName: nginx-internal
+  ingressClassName: {{ .Values.global.ingress.internal.className }}
   rules:
     - host: {{ .Values.domainPrefix }}.{{ .Values.global.domain.internal.suffix }}
       http:

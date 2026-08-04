@@ -31,10 +31,10 @@
     {
       "customType": "regex",
       "fileMatch": [
-        "^ingress/nginx-(external|internal)\\.yaml$"
+        "^ingress/values\\.yaml$"
       ],
       "matchStrings": [
-        "chart:\\s*(?<depName>ingress-nginx)\\s*\\n\\s*repo:\\s*(?<registryUrl>\\S+)\\s*\\n\\s*targetNamespace:\\s*\\S+\\s*\\n\\s*version:\\s*(?<currentValue>\\S+)"
+        "name:\\s*(?<depName>ingress-nginx)\\s*\\n\\s*repo:\\s*(?<registryUrl>\\S+)\\s*\\n\\s*version:\\s*\"?(?<currentValue>[^\"\\s]+)"
       ],
       "datasourceTemplate": "helm"
     },

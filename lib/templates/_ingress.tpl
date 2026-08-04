@@ -1,7 +1,7 @@
 {{/*
 Internal ingress always; the nginx-external one only when ingress.external is set.
 External hosts are behind Authentik forward-auth enforced by the nginx-external
-controller itself (ingress/nginx-external.yaml), so nothing is added here - unless
+controller itself (ingress/templates/_config.tpl), so nothing is added here - unless
 ingress.authProvider names a per-app provider, which overrides that global auth with
 its own so the app can have its own allowlist. Such apps also need
 lib.authOutpost rendered in their chart.
@@ -21,7 +21,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: nginx-internal
+  ingressClassName: {{ .Values.global.ingress.internal.className }}
   rules:
     - host: {{ .Values.app.domainPrefix }}.{{ .Values.global.domain.internal.suffix }}
       http:
@@ -49,14 +49,14 @@ metadata:
     {{- if $ing.authProvider }}
     # An Ingress-level auth-url replaces the controller's global auth for this host,
     # so the gate becomes the {{ $ing.authProvider }} provider and its own bindings.
-    nginx.ingress.kubernetes.io/auth-url: http://{{ include "lib.authOutpostFqdn" . }}:{{ include "lib.authOutpostPort" . }}/outpost.goauthentik.io/auth/nginx
+    nginx.ingress.kubernetes.io/auth-url: http://{{ include "lib.authOutpostFqdn" . }}:{{ .Values.global.authentik.outpost.port }}/outpost.goauthentik.io/auth/nginx
     nginx.ingress.kubernetes.io/auth-signin: https://{{ $extHost }}/outpost.goauthentik.io/start?rd=$escaped_request_uri
     nginx.ingress.kubernetes.io/auth-response-headers: {{ include "lib.authResponseHeaders" . }}
     nginx.ingress.kubernetes.io/auth-proxy-set-headers: {{ include "lib.namespace" . }}/authentik-auth-headers
     {{- end }}
   {{- end }}
 spec:
-  ingressClassName: nginx-external
+  ingressClassName: {{ .Values.global.ingress.external.className }}
   rules:
     - host: {{ $extHost }}
       http:
@@ -70,7 +70,7 @@ spec:
               service:
                 name: authentik-outpost
                 port:
-                  number: {{ include "lib.authOutpostPort" . }}
+                  number: {{ .Values.global.authentik.outpost.port }}
           {{- end }}
           - path: /
             pathType: Prefix

@@ -6,10 +6,8 @@ cross-namespace auth-proxy-set-headers ConfigMap.
 */}}
 
 {{- define "lib.authOutpostFqdn" -}}
-ak-outpost-authentik-embedded-outpost.authentik.svc.cluster.local
+{{- printf "%s.%s.svc.cluster.local" .Values.global.authentik.outpost.service .Values.global.authentik.namespace -}}
 {{- end -}}
-
-{{- define "lib.authOutpostPort" -}}9000{{- end -}}
 
 {{- define "lib.authResponseHeaders" -}}
 Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-authentik-email,X-authentik-name,X-authentik-uid
@@ -27,7 +25,7 @@ spec:
   type: ExternalName
   externalName: {{ include "lib.authOutpostFqdn" . }}
   ports:
-    - port: {{ include "lib.authOutpostPort" . }}
+    - port: {{ .Values.global.authentik.outpost.port }}
 ---
 apiVersion: v1
 kind: ConfigMap

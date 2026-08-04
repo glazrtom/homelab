@@ -1,0 +1,4 @@
+apiVersion: v2
+name: ingress
+description: The two ingress-nginx controllers (internal/external), as k3s HelmChart CRs
+version: 0.1.0
