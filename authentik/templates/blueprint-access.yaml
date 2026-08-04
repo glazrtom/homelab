@@ -7,15 +7,18 @@
 Flatten gatedApps into one entry per host. A proxy provider carries a single
 external_host and the outpost keys its application map on it, so covering both the
 public and the internal host of a service takes two providers - generated here from
-one gatedApps entry so their policy binding is necessarily identical.
+one gatedApps entry so their policy binding is necessarily identical. The two lists
+are kept apart because each attaches to a different outpost below.
 */}}
-{{- $variants := list }}
+{{- $publicVariants := list }}
+{{- $internalVariants := list }}
 {{- range $app := .Values.gatedApps }}
 {{- $groups = append $groups $app.group }}
 {{- $extHost := $app.externalHost | default (printf "%s.%s" $app.prefix $public) }}
-{{- $variants = append $variants (dict "id" $app.slug "name" $app.name "group" $app.group "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
-{{- $variants = append $variants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "group" $app.group "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
+{{- $publicVariants = append $publicVariants (dict "id" $app.slug "name" $app.name "group" $app.group "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
+{{- $internalVariants = append $internalVariants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "group" $app.group "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
 {{- end }}
+{{- $variants := concat $publicVariants $internalVariants }}
 {{- $groups = $groups | uniq | sortAlpha }}
 
 {{- if lt (len $variants) 2 }}
@@ -98,7 +101,8 @@ data:
       # Every proxy provider above has to be applied before this entry: !KeyOf only
       # resolves entries that already have a model instance. service_connection is
       # pinned rather than omitted - nulling it would tear down
-      # ak-outpost-authentik-embedded-outpost and deny every gated host.
+      # ak-outpost-authentik-embedded-outpost and deny every gated host. Carries only
+      # the public providers - the internal ones are on the "internal" outpost below.
       - model: authentik_outposts.outpost
         identifiers:
           managed: goauthentik.io/outposts/embedded
@@ -106,7 +110,7 @@ data:
           type: proxy
           service_connection: !KeyOf sc-local
           providers:
-            {{- range $v := $variants }}
+            {{- range $v := $publicVariants }}
             - !KeyOf provider-{{ $v.id }}
             {{- end }}
           # For the embedded outpost, authentik_host_browser has no effect - the browser
@@ -117,6 +121,28 @@ data:
           # embedded outpost that always goes over localhost regardless of this value.
           config:
             authentik_host: https://{{ .Values.app.domainPrefix }}.{{ $public }}/
+            kubernetes_namespace: {{ include "lib.namespace" . }}
+            kubernetes_service_type: ClusterIP
+
+      # A second, deployed (non-embedded) outpost carrying only the -internal
+      # providers. Unlike the embedded one, a deployed outpost honours
+      # authentik_host_browser, so LAN logins can redirect to auth.internal instead of
+      # hairpinning out through Cloudflare to the public host and back.
+      - model: authentik_outposts.outpost
+        identifiers:
+          name: internal
+        attrs:
+          type: proxy
+          service_connection: !KeyOf sc-local
+          providers:
+            {{- range $v := $internalVariants }}
+            - !KeyOf provider-{{ $v.id }}
+            {{- end }}
+          config:
+            # The pod talks to core over the in-cluster Service, not auth.internal,
+            # which only Pi-hole (not cluster DNS) resolves.
+            authentik_host: http://{{ .Values.service.name }}.{{ include "lib.namespace" . }}.svc.cluster.local/
+            authentik_host_browser: http://{{ .Values.app.domainPrefix }}.{{ $internal }}/
             kubernetes_namespace: {{ include "lib.namespace" . }}
             kubernetes_service_type: ClusterIP
 

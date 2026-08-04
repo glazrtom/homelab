@@ -46,28 +46,71 @@ Charts that need these values layer them via the ArgoCD `helm.valueFiles` list, 
 Two `ingress-nginx` controllers run with separate IngressClasses, one per key under
 `global.ingress` (`internal`/`external`). The `ingress/` chart renders one k3s-native
 `helm.cattle.io/v1` `HelmChart` CR per controller (`ingress/templates/helmchart.yaml`);
-controller-level config (forwarded headers, the Cloudflare scheme map, global auth) lives
-in `ingress/templates/_config.tpl`. Services typically expose **two** Ingress objects
-(see `plex/templates/ingress.yaml` and
-`ingress-external.yaml`):
+controller-level config (forwarded headers, real-IP recovery, the Cloudflare scheme map,
+global auth) lives in `ingress/templates/_config.tpl`. `lib.ingress` renders **two**
+Ingress objects for any chart that uses it (see `lib/templates/_ingress.tpl`; plex and
+calibre are hand-written exceptions):
 
-- Internal: `ingressClassName: nginx-internal`, host `<prefix>.internal` (LAN only, no auth).
+- Internal: `ingressClassName: nginx-internal`, host `<prefix>.internal`.
 - External: `ingressClassName: nginx-external`, host `<prefix>.<global.domain.public.suffix>`.
 
 Path from the internet: **Cloudflare Tunnel (`cloudflare/`) → nginx-external → service.**
-External hosts are **deny-by-default**: `authentik/values.yaml` `gatedApps` is the single
-registry of gated hosts and the group allowed in, and the blueprint generates one
-`forward_single` proxy provider (plus application and policy binding) per host from it.
-A host missing from that list matches no application, and the `global-auth-url` in
-`ingress/templates/_config.tpl` turns that into a 403. A gated chart sets
-`ingress.authProvider` and renders `lib.authOutpost`; that pair adds the Ingress-level
-`auth-url`, the `/outpost.goauthentik.io` path (`forward_single` issues its cookie on the
-app's own host) and the in-namespace `ExternalName` alias for the one embedded outpost in
-`authentik`. Hosts that must not be gated (plex, Authentik itself) opt out with
-`nginx.ingress.kubernetes.io/enable-global-auth: "false"`. `nginx-external` also maps
-Cloudflare's `CF-Visitor` header to a real scheme and rewrites `X-Forwarded-Proto/Host`.
-`nginx-internal` has no auth — the internal half of each `gatedApps` entry is generated
-but unwired.
+**Both classes are deny-by-default.** `authentik/values.yaml` `gatedApps` is the single
+registry of gated hosts and the group allowed in; the blueprint
+(`authentik/templates/blueprint-access.yaml`) generates **two** `forward_single` proxy
+providers per entry — one for the public host, one for `<prefix>.internal` — so one
+registry entry gates both classes at once. A host missing from `gatedApps` matches no
+application, and the class's own `global-auth-url` (`ingress.internalConfig` /
+`ingress.externalConfig` in `ingress/templates/_config.tpl`) turns that into a 403.
+
+A chart sets exactly one of two states via `ingress.auth` — there is no third, implicit
+one, and `lib.ingress` `fail`s the template if the key is missing:
+
+| | `ingress.auth: true` | `ingress.auth: false` |
+|---|---|---|
+| both classes | gated via that class's own outpost | `enable-global-auth: "false"` |
+
+`auth: true` also needs `lib.authOutpost` rendered in the chart (a
+`service-authentik-outpost.yaml` template with `{{ include "lib.authOutpost" . }}`), which
+creates the in-namespace `ExternalName` alias(es) and the `authentik-auth-headers`
+ConfigMap the Ingress-level annotations reference; add a matching `gatedApps` entry too.
+Hosts that must not be gated at all (plex, calibre, Authentik itself) set `auth: false`.
+
+There are **two proxy outposts**, keyed the same way as `global.ingress`:
+`global.authentik.outposts.{external,internal}`. The embedded (`external`) outpost's
+`authentik_host` is hardcoded to the public host — for the embedded outpost,
+`authentik_host_browser` has no effect, so browser redirects would leave the LAN if it
+also served internal hosts. The `internal` outpost is a second, non-embedded, deployed
+outpost (via the existing `sc-local` service connection) carrying only the `-internal`
+providers, with `authentik_host` pointed at Authentik's in-cluster Service (`auth.internal`
+resolves via Pi-hole, not cluster DNS) and `authentik_host_browser` at `auth.internal` — so
+LAN logins never hairpin out through Cloudflare.
+
+Native (non-browser) clients that can't follow an SSO redirect (Jellyfin's TV/mobile apps)
+don't need an ungated host as an escape hatch: a `gatedApps` entry's `skipPathRegex`
+excludes the client's own auth/API paths from the forward-auth check while the rest of the
+host stays gated — see the `jellyfin` entry in `authentik/values.yaml`.
+
+Routing ungated hosts *through* the outpost (a provider with `skip_path_regex: .*`) was
+considered and rejected: nginx `auth_request` treats any non-2xx/401/403 as an error and
+returns **500**, and the outpost is what evaluates the skip regex — so a `.*` host still
+hard-depends on the Authentik pod. Every Authentik restart would take the *unauthenticated*
+apps down, in exchange for no security gain.
+
+`nginx-external` also maps Cloudflare's `CF-Visitor` header to a real scheme, rewrites
+`X-Forwarded-Proto/Host`, and recovers the real client IP from `CF-Connecting-IP` (needed
+for `ingress.rateLimit`, below, to key on the actual visitor rather than the shared
+`cloudflared` pod IP). The manual Cloudflare-side layer — one rate-limiting rule, up to
+five custom rules (geo/ASN/UA blocking), Bot Fight Mode — isn't expressible in
+`cloudflare/templates/configMap.yaml`'s single `*.glazrtom.cz` catch-all and has to be set
+in the Cloudflare dashboard directly.
+
+`ingress.rateLimit` (external Ingress only — the LAN isn't this threat model) sets
+`limit-rps`/`limit-connections`/`limit-burst-multiplier`. An ungated external host
+(`auth: false`) gets a conservative default when `rateLimit` is left unset;
+`rateLimit: false` disables it outright (needed for Authentik's own host, whose login flow
+serves every gated app's assets and would break under a low cap); setting `rateLimit`
+alongside `auth: true` is a template error — a gated host doesn't need the extra layer.
 
 Authentik (SSO/IdP) is deployed from `authentik/` (official upstream chart, with a
 bundled postgres, refactored onto the `lib/` templates like the other apps).
@@ -185,7 +228,9 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   Application CR (copy an existing one; keep `repoURL`/`targetRevision: HEAD`/automated
   sync). Cluster-infra components (not workloads) go in `applications/core/` instead.
 - Reference domains through `global.domain.*`, not hardcoded hostnames.
-- Provide both internal and external Ingress objects following the plex pattern if the
-  service should be reachable from the internet (external = behind Authentik).
+- A new chart rendering `lib.ingress` must set `ingress.auth` — `true` (gated; add a
+  `gatedApps` entry in `authentik/values.yaml` and render `lib.authOutpost` in the chart)
+  or `false` (deliberately open on both classes). There is no third option; the template
+  enforces it.
 - Keep comments to the minimum necessary — prefer self-explanatory names; comment only
   non-obvious intent.

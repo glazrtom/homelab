@@ -12,10 +12,11 @@ app:
 
 ingress:
   enabled: true
-  # Browser access over the tunnel gets SSO; native TV and mobile clients can't follow
-  # the redirect, so they stay on the internal host.
   external: true
-  authProvider: jellyfin-forward-auth
+  # Gated on both hosts. Native TV/mobile clients don't get an escape hatch - instead
+  # their own auth/API paths are excluded from the forward-auth check via the
+  # gatedApps skipPathRegex in authentik/values.yaml.
+  auth: true
 
 volumes:
   config:

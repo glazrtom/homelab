@@ -19,14 +19,26 @@ global:
       loadBalancerIP: "10.0.0.150"
     external:
       className: nginx-external
+      # k3s cluster pod CIDR (kubectl get node -o jsonpath='{.items[0].spec.podCIDR}'
+      # widened from the node's /24 to the cluster's configured /16) - used to restrict
+      # which hop is trusted to set X-Forwarded-For once enable-real-ip is on.
+      trustedProxyCidr: "10.42.0.0/16"
 
-  # The one embedded outpost. Consumed by the nginx-external global-auth-url and by
-  # lib.authOutpost* for the per-app auth-url / ExternalName alias.
+  # Two proxy outposts: the embedded one gates public hosts and must have its
+  # authentik_host set to the public host (its browser redirects ignore
+  # authentik_host_browser); the internal one is a deployed outpost so it can honour
+  # the authentik_host/authentik_host_browser split and keep LAN logins on the LAN.
+  # Consumed by the two ingress.internalConfig/externalConfig global-auth-urls and by
+  # lib.authOutpost* for the per-app, per-class auth-url / ExternalName alias.
   authentik:
     namespace: authentik
-    outpost:
-      service: ak-outpost-authentik-embedded-outpost
-      port: 9000
+    outposts:
+      external:
+        service: ak-outpost-authentik-embedded-outpost
+        port: 9000
+      internal:
+        service: ak-outpost-internal
+        port: 9000
 
   sharedMedia:
     name: shared-media

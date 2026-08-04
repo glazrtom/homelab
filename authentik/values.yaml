@@ -13,10 +13,11 @@ service:
 ingress:
   enabled: true
   external: true
-  annotations:
-    # Authentik's own host must not be forward-auth'd against itself. Harmless on
-    # the nginx-internal copy, which has no global auth.
-    nginx.ingress.kubernetes.io/enable-global-auth: "false"
+  # Authentik's own host must not be forward-auth'd against itself, on either class.
+  auth: false
+  # This host serves the login flow and all its assets for every gated app, so a low
+  # rps cap would break page loads.
+  rateLimit: false
 
 # Whose accounts appear in the LDAP directory, and can therefore log into Jellyfin.
 ldapGroup: homelab-users
@@ -24,22 +25,26 @@ ldapGroup: homelab-users
 # Every service Authentik gates, and the group allowed to reach it. Each entry becomes
 # a pair of forward_single providers - one for the public host, one for the internal
 # one - each with its own application, both bound to the same group. Both halves come
-# from one entry, so the rules can't drift apart.
-#
-# Internal-only services are listed too. The internal half is not wired up yet -
-# nginx-internal does no auth today - so their providers see no traffic; they exist so
-# that turning it on later is an ingress change rather than a policy decision taken a
-# second time.
+# from one entry, so the rules can't drift apart. The public half attaches to the
+# embedded outpost, the internal half to the "internal" outpost, so both nginx-internal
+# and nginx-external are gated by default.
 #
 # There is deliberately no catch-all provider. A host missing from this list, or
 # renamed without updating it, matches nothing and the outpost denies it. Hosts that
-# must not be gated at all (plex, authentik itself) opt out explicitly with
-# nginx.ingress.kubernetes.io/enable-global-auth: "false".
+# must not be gated at all (plex, calibre, authentik itself) opt out explicitly with
+# ingress.auth: false.
 gatedApps:
   - slug: jellyfin
     name: Jellyfin
     prefix: jellyfin
     group: homelab-users
+    # TODO I don't think this is right. Check it
+    # Native TV/mobile clients can't follow a browser SSO redirect; exclude their own
+    # auth/API endpoints from the forward-auth check rather than leaving the whole
+    # host open. Starting point only - widen from the outpost's request log against a
+    # real client.
+#    skipPathRegex: |
+#      ^/(socket|System/Info/Public|Users/AuthenticateByName|QuickConnect)
   - slug: longhorn
     name: Longhorn
     prefix: longhorn

@@ -1,12 +1,11 @@
 {{/*
-Per-namespace plumbing for apps gated by their own Authentik provider
-(ingress.authProvider). Both objects have to live in the app's namespace: an
-Ingress backend must be a same-namespace Service, and ingress-nginx refuses a
-cross-namespace auth-proxy-set-headers ConfigMap.
+Per-namespace plumbing for apps gated by Authentik (ingress.auth: true). Both objects
+have to live in the app's namespace: an Ingress backend must be a same-namespace
+Service, and ingress-nginx refuses a cross-namespace auth-proxy-set-headers ConfigMap.
 */}}
 
 {{- define "lib.authOutpostFqdn" -}}
-{{- printf "%s.%s.svc.cluster.local" .Values.global.authentik.outpost.service .Values.global.authentik.namespace -}}
+{{- printf "%s.%s.svc.cluster.local" (index .root.Values.global.authentik.outposts .class).service .root.Values.global.authentik.namespace -}}
 {{- end -}}
 
 {{- define "lib.authResponseHeaders" -}}
@@ -15,17 +14,30 @@ Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-entitlements,X-au
 
 {{- define "lib.authOutpost" -}}
 {{- $ing := .Values.ingress | default dict }}
-{{- if and $ing.external $ing.authProvider }}
+{{- if $ing.auth }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: authentik-outpost
+  name: authentik-outpost-internal
   namespace: {{ include "lib.namespace" . }}
 spec:
   type: ExternalName
-  externalName: {{ include "lib.authOutpostFqdn" . }}
+  externalName: {{ include "lib.authOutpostFqdn" (dict "root" . "class" "internal") }}
   ports:
-    - port: {{ .Values.global.authentik.outpost.port }}
+    - port: {{ .Values.global.authentik.outposts.internal.port }}
+{{- if $ing.external }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-outpost-external
+  namespace: {{ include "lib.namespace" . }}
+spec:
+  type: ExternalName
+  externalName: {{ include "lib.authOutpostFqdn" (dict "root" . "class" "external") }}
+  ports:
+    - port: {{ .Values.global.authentik.outposts.external.port }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap

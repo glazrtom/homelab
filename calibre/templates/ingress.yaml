@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   name: calibre-ingress
   namespace: {{ .Values.namespace }}
+  {{- with (.Values.ingress | default dict).annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.global.ingress.internal.className }}
   rules:

@@ -16,6 +16,7 @@ prowlarr:
   ingress:
     enabled: true
     external: false
+    auth: true
   volumes:
     config:
       create: true
@@ -51,6 +52,7 @@ radarr:
   ingress:
     enabled: true
     external: false
+    auth: true
   volumes:
     config:
       create: true
@@ -72,6 +74,7 @@ sonarr:
   ingress:
     enabled: true
     external: false
+    auth: true
   volumes:
     config:
       create: true

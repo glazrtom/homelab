@@ -6,8 +6,14 @@ chart:
   repo: https://kubernetes.github.io/ingress-nginx
   version: "4.15.1"
 
-# Class name and MetalLB LB IP for each come from global.ingress.<key>.
+# Class name and MetalLB LB IP for each come from global.ingress.<key>. Both classes
+# deny-by-default (see ingress.internalConfig / ingress.externalConfig).
 controllers:
-  internal: {}
+  internal:
+    configTemplate: ingress.internalConfig
   external:
     configTemplate: ingress.externalConfig
+    # A real controller.* value, rendered as a sibling of controller.config in
+    # helmchart.yaml - nested inside config: it would silently be ignored.
+    proxySetHeaders:
+      X-Forwarded-Proto: "$real_scheme"

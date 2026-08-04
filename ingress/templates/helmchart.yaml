@@ -27,5 +27,9 @@ spec:
       config:
 {{ include $c.configTemplate $ | indent 8 }}
 {{- end }}
+{{- if $c.proxySetHeaders }}
+      proxySetHeaders:
+{{ toYaml $c.proxySetHeaders | indent 8 }}
+{{- end }}
 ---
 {{- end }}

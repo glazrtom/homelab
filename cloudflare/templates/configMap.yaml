@@ -14,19 +14,4 @@ data:
           noTLSVerify: true
           originServerName: "*.{{ .Values.global.domain.public.suffix }}"
           logHeaders: true
-          headers:
-            - name: CF-Connecting-IP
-            - name: X-Real-IP
-            - name: CF-IPCountry
-            - name: CF-Ray
-            - name: CF-Visitor
-            - name: CF-Device-Type
-            - name: CF-IPCITY
-            - name: CF-IPCONTINENT
-            - name: CF-IPLATITUDE
-            - name: CF-IPLONGITUDE
-            - name: CF-IPREGION
-            - name: X-Forwarded-For
-            - name: Accept-Language
-            - name: User-Agent
       - service: http_status:404

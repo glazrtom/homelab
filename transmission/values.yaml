@@ -6,6 +6,9 @@ app:
   port: 9091
   domainPrefix: transmission
 
+ingress:
+  auth: true
+
 image:
   repository: haugene/transmission-openvpn
   pullPolicy: IfNotPresent

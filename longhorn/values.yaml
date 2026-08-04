@@ -14,7 +14,7 @@ service:
 ingress:
   enabled: true
   external: true
-  authProvider: longhorn-forward-auth
+  auth: true
 
 backup:
   enabled: false # gates the backup-daily RecurringJob; no backup target yet
