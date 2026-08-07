@@ -19,7 +19,9 @@ ingress:
   # rps cap would break page loads.
   rateLimit: false
 
-# Whose accounts appear in the LDAP directory, and can therefore log into Jellyfin.
+# Whose accounts appear in the LDAP directory (native Jellyfin clients), and who may
+# complete Jellyfin's browser OIDC login (see blueprint-access.yaml's
+# provider-jellyfin-oidc). Same group gates both paths to the same app.
 ldapGroup: homelab-users
 
 # Every service Authentik gates, and the group allowed to reach it. Each entry becomes
