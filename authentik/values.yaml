@@ -82,8 +82,6 @@ authentik:
     envFrom:
       - secretRef:
           name: authentik-secrets
-      - secretRef:
-          name: authentik-bootstrap
 
   authentik:
     error_reporting:

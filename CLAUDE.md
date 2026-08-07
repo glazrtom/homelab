@@ -162,11 +162,15 @@ cluster — `ansible/roles/secrets` does this automatically (see Provisioning be
 `**/secrets/` is git-ignored at the repo root; never commit plaintext from it. Some
 bootstrap secrets (TLS, Tailscale) are instead created imperatively — see `init.sh`.
 
-`authentik/` has two such scripts, split so each can be (re)generated independently:
-`generate-secret.sh` owns `authentik-secrets` (Postgres password, Django secret key —
-must never be re-rolled on a running install), and `generate-bootstrap-secret.sh` owns
-`authentik-bootstrap` (akadmin bootstrap password/token/email, LDAP bind key — safe to
-(re)generate later even if `authentik-secrets` already exists).
+`authentik/generate-secret.sh` owns a single `authentik-secrets` secret carrying every
+key the chart needs (Postgres password, Django secret key, akadmin bootstrap
+password/token/email, LDAP bind key, Jellyfin OIDC client id/secrets). Each key
+backfills independently — existing values are read back out of the git-ignored
+plaintext and only missing keys are freshly generated — so adding a new key later
+never re-rolls an existing one. None of these are safe to regenerate on a running
+install: Postgres password / Django secret key break authentik <-> postgres auth
+immediately, and the rest are pinned into the LDAP outpost provider or Jellyfin's
+PVC-stored plugin config.
 
 `base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
 (emberstack), which mirrors it into other namespaces. `base/generate-windscribe-secret.sh`
