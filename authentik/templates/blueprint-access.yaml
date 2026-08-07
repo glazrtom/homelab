@@ -266,6 +266,12 @@ data:
           client_type: confidential
           client_id: !Env JELLYFIN_OIDC{{ $v.suffix | upper | replace "-" "_" }}_CLIENT_ID
           client_secret: !Env JELLYFIN_OIDC{{ $v.suffix | upper | replace "-" "_" }}_CLIENT_SECRET
+          # grant_types defaults to an empty list - without it the authorize view
+          # rejects every response_type=code request with "Invalid grant_type for
+          # provider" before it ever reaches redirect_uri/consent checks.
+          grant_types:
+            - authorization_code
+            - refresh_token
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
