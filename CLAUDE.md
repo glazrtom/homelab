@@ -93,13 +93,18 @@ host stays gated — see the `jellyfin` entry in `authentik/values.yaml`.
 
 Forward-auth's headers (`X-authentik-*`) stop at nginx — Jellyfin itself never reads
 them, so being forward-auth'd doesn't log a browser into Jellyfin. Browser SSO for
-Jellyfin instead runs over a separate `authentik_providers_oauth2.oauth2provider`
-(`provider-jellyfin-oidc` in `blueprint-access.yaml`), consumed by a community OIDC
-plugin installed by hand in the Jellyfin UI (config lives in its PVC, like the LDAP
-plugin's). Because implicit-consent is used, completing that OIDC round-trip is
-invisible when a browser already holds an authentik session from forward-auth — so the
-two mechanisms compose into single sign-on without either depending on the other. This
-doesn't help native clients, which still need the `skipPathRegex` carve-out above.
+Jellyfin instead runs over two separate `authentik_providers_oauth2.oauth2provider`s
+(`provider-jellyfin-oidc` / `provider-jellyfin-oidc-internal` in
+`blueprint-access.yaml`), consumed by a community OIDC plugin installed by hand in the
+Jellyfin UI (config lives in its PVC, like the LDAP plugin's). Because implicit-consent
+is used, completing that OIDC round-trip is invisible when a browser already holds an
+authentik session from forward-auth — so the two mechanisms compose into single
+sign-on without either depending on the other. Split public/internal for the same
+reason the proxy providers are: `auth.internal` and `auth.glazrtom.cz` don't share a
+session cookie, and the plugin picks one fixed issuer host per provider config with no
+per-request switching, so each host needs its own client and callback path to stay
+invisible and to keep LAN logins off Cloudflare. This doesn't help native clients,
+which still need the `skipPathRegex` carve-out above.
 
 Routing ungated hosts *through* the outpost (a provider with `skip_path_regex: .*`) was
 considered and rejected: nginx `auth_request` treats any non-2xx/401/403 as an error and

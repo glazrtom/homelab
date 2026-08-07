@@ -38,13 +38,22 @@ BOOTSTRAP_TOKEN="$(_existing_value AUTHENTIK_BOOTSTRAP_TOKEN)"
 LDAP_BIND_KEY="$(_existing_value LDAP_BIND_KEY)"
 [ -n "$LDAP_BIND_KEY" ] || LDAP_BIND_KEY="$(openssl rand -hex 32)"
 
-# JELLYFIN_OIDC_CLIENT_ID isn't a secret in itself, but it's kept alongside the
-# secret it's paired with so both are generated and read back together.
+# JELLYFIN_OIDC_*_CLIENT_ID isn't a secret in itself, but it's kept alongside the
+# secret it's paired with so both are generated and read back together. Public and
+# internal are separate OAuth2 clients - not just separate redirect URIs - because the
+# Jellyfin plugin picks an issuer host per provider config, and auth.internal /
+# auth.glazrtom.cz don't share a session cookie, so each host needs its own hop.
 JELLYFIN_OIDC_CLIENT_ID="$(_existing_value JELLYFIN_OIDC_CLIENT_ID)"
 [ -n "$JELLYFIN_OIDC_CLIENT_ID" ] || JELLYFIN_OIDC_CLIENT_ID="$(openssl rand -hex 16)"
 
 JELLYFIN_OIDC_CLIENT_SECRET="$(_existing_value JELLYFIN_OIDC_CLIENT_SECRET)"
 [ -n "$JELLYFIN_OIDC_CLIENT_SECRET" ] || JELLYFIN_OIDC_CLIENT_SECRET="$(openssl rand -hex 32)"
+
+JELLYFIN_OIDC_INTERNAL_CLIENT_ID="$(_existing_value JELLYFIN_OIDC_INTERNAL_CLIENT_ID)"
+[ -n "$JELLYFIN_OIDC_INTERNAL_CLIENT_ID" ] || JELLYFIN_OIDC_INTERNAL_CLIENT_ID="$(openssl rand -hex 16)"
+
+JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET="$(_existing_value JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET)"
+[ -n "$JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET" ] || JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET="$(openssl rand -hex 32)"
 
 # AUTHENTIK_BOOTSTRAP_* only apply to the first migrate against an empty DB, so a
 # fresh cluster comes up with a usable akadmin instead of the initial-setup flow.
@@ -60,8 +69,12 @@ kubectl create secret generic authentik-bootstrap \
   --from-literal=LDAP_BIND_KEY="$LDAP_BIND_KEY" \
   --from-literal=JELLYFIN_OIDC_CLIENT_ID="$JELLYFIN_OIDC_CLIENT_ID" \
   --from-literal=JELLYFIN_OIDC_CLIENT_SECRET="$JELLYFIN_OIDC_CLIENT_SECRET" \
+  --from-literal=JELLYFIN_OIDC_INTERNAL_CLIENT_ID="$JELLYFIN_OIDC_INTERNAL_CLIENT_ID" \
+  --from-literal=JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET="$JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET" \
   --dry-run=client -o yaml > "$PLAIN"
 chmod go-rwx "$PLAIN"
-unset EMAIL BOOTSTRAP_PASSWORD BOOTSTRAP_TOKEN LDAP_BIND_KEY JELLYFIN_OIDC_CLIENT_ID JELLYFIN_OIDC_CLIENT_SECRET
+unset EMAIL BOOTSTRAP_PASSWORD BOOTSTRAP_TOKEN LDAP_BIND_KEY \
+  JELLYFIN_OIDC_CLIENT_ID JELLYFIN_OIDC_CLIENT_SECRET \
+  JELLYFIN_OIDC_INTERNAL_CLIENT_ID JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET
 
 seal_if_needed "$PLAIN" "$SEALED"
