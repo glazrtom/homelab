@@ -16,33 +16,43 @@ new services must not introduce it. A workload is a local Helm chart plus an Arg
 VPN sidecar in `media/`), not compose services. The single k3s node is provisioned by
 `ansible/` (see Provisioning below); everything above the node is ArgoCD's.
 
-## Git workflow (mandatory)
+## Git workflow
 
-**Always work on a feature branch and open a PR into `master`. Never push to `master`
-directly.** This is not stylistic: ArgoCD watches `HEAD` of `master` with
-`automated: {prune, selfHeal}`, so anything landing on `master` is deployed to the live
-cluster within minutes, with no review step and no CI to catch a broken template. The PR
-is the only gate between an edit and production.
+**Interactive sessions: never create branches, commit, or push — and don't offer to.**
+Make the edits, validate them (below), and leave everything in the working tree; the human
+drives git here. This holds even when the working tree is dirty or sitting on `master`.
+
+**Headless `@claude` GitHub Action runs** (`.github/workflows/claude.yml` — issues, issue
+comments, PR review comments) are the exception, and there the rule is mandatory: **work on
+a feature branch and open a PR into `master`. Never push to `master` directly.** This is not
+stylistic: ArgoCD watches `HEAD` of `master` with `automated: {prune, selfHeal}`, so anything
+landing on `master` is deployed to the live cluster within minutes. The PR is the only gate
+between an edit and production.
 
 - Branch off `master` (`git switch -c <topic>`), commit there, push the branch, open a PR.
 - Let the PR merge into `master`; that merge is what triggers the deploy.
-- Before opening the PR, render anything you touched (`helm template <chart>/ -f
-  global/values.yaml -f <chart>/values.yaml`) — a chart that fails to template leaves the
-  Application stuck `OutOfSync` in the cluster.
 - Commit with plain `-m` flags (repeat `-m` for extra paragraphs). Never wrap the message
   in a heredoc or `$(...)` — command substitution disables prefix permission matching, so
-  a `$(cat <<EOF …)` commit is denied in headless runs (the `@claude` GitHub Action) even
-  though `Bash(git commit:*)` is allowed.
+  a `$(cat <<EOF …)` commit is denied in headless runs even though `Bash(git commit:*)` is
+  allowed.
 - Interactive-only permission rules (e.g. `git commit`/`git push` under `ask`) belong in
   the git-ignored `.claude/settings.local.json`, not the tracked `.claude/settings.json` —
   the `@claude` GitHub Action loads project settings too, and an `ask` rule there outranks
   the workflow's `--allowedTools` and hard-denies in headless runs.
-- Validate before opening the PR, per what you touched: charts with `helm template` (as
-  above); Ansible with `cd ansible && ansible-playbook --syntax-check playbooks/<pb>.yml`
-  — the `--syntax-check` flag must come **immediately** after `ansible-playbook`, since
-  that exact prefix is what the `@claude` Action allowlists (a full play run is
-  deliberately not permitted); plain YAML with `yamllint <file>` (chart templates are Go
-  templates and are excluded via `.yamllint.yml`).
+
+## Validation (both modes)
+
+Validate whatever you touched before handing work back (interactive) or opening the PR
+(headless):
+
+- Charts: `helm template <chart>/ -f global/values.yaml -f <chart>/values.yaml` — a chart
+  that fails to template leaves the Application stuck `OutOfSync` in the cluster.
+- Ansible: `cd ansible && ansible-playbook --syntax-check playbooks/<pb>.yml` — the
+  `--syntax-check` flag must come **immediately** after `ansible-playbook`, since that exact
+  prefix is what the `@claude` Action allowlists (a full play run is deliberately not
+  permitted).
+- Plain YAML: `yamllint <file>` (chart templates are Go templates and are excluded via
+  `.yamllint.yml`).
 
 ## How deployment works
 
@@ -163,6 +173,38 @@ alongside `auth: true` is a template error — a gated host doesn't need the ext
 
 Authentik (SSO/IdP) is deployed from `authentik/` (official upstream chart, with a
 bundled postgres, refactored onto the `lib/` templates like the other apps).
+
+## Deploy verification (CI)
+
+`.github/workflows/deploy.yml` runs on every push to `master`: it hard-refreshes the
+`core`/`apps` app-of-apps Applications plus every child Application (via
+`scripts/argocd-wait.sh`) so ArgoCD picks the commit up immediately instead of waiting out
+its poll interval, then blocks until each is `Synced`/`Healthy` at that commit, failing the
+job otherwise. This is the only automated signal that a push actually deployed cleanly —
+there is no other CI in this repo.
+
+It talks to ArgoCD over a dedicated, ungated host, `argo-ci.glazrtom.cz`
+(`argocd/templates/ingress-ci.yaml`, `argocd.ci` in `argocd/values.yaml`) —
+`argo.glazrtom.cz`/`argo.internal` stay gated by Authentik as normal, and `argo-ci` is
+deliberately **not** registered in `authentik/values.yaml` `gatedApps`. It is not open to
+the internet: **Cloudflare Access** sits in front of the tunnel and 403s any request
+missing a service-token header pair before it ever reaches nginx or the cluster.
+Authentication into ArgoCD itself is a separate, read-only API token for the `github-actions`
+account (`argocd/templates/cm.yaml` declares it `apiKey`-only — no UI session possible;
+`argocd/templates/rbac-cm.yaml` grants it `get` on `applications` only, nothing else).
+
+One-time setup outside this repo (redo after provisioning a fresh cluster — the ArgoCD
+token lives in `argocd-secret`, not git, so it does not survive a rebuild, like the sealed
+secrets):
+
+1. Cloudflare Zero Trust → Access → Service Auth → create a service token; record the
+   Client ID/Secret (shown once).
+2. Access → Applications → Add → Self-hosted, domain `argo-ci.glazrtom.cz`; policy Action
+   = Service Auth, Include = that token. No other policy on the app.
+3. From the LAN, once the chart has synced: `argocd login argo.internal --grpc-web` then
+   `argocd account generate-token --account github-actions`.
+4. Set GitHub repo secrets `ARGOCD_AUTH_TOKEN`, `CF_ACCESS_CLIENT_ID`,
+   `CF_ACCESS_CLIENT_SECRET`.
 
 ## Storage
 
