@@ -254,10 +254,12 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   from here on) → `helm` (helm + helm-diff) → `argocd` (namespace + upstream
   `install.yaml`) → `sealed_secrets` (installs the Sealed Secrets controller via Helm
   into `kube-system`) → `cloudflare` (installs/logs in `cloudflared` if needed, creates the
-  tunnel and its wildcard DNS route if missing, then runs `cloudflare/generate-secret.sh` —
-  the same `scripts/seal.sh` hash-gated reseal used by the other secrets — and prompts
-  before commit/push; any declined or failed step just skips the rest of the role rather than
-  failing the play) → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys reflector,
+  tunnel and its wildcard DNS route if missing, prompts for a Cloudflare API token to
+  enable the zone-level "Always Use HTTPS" setting via the Cloudflare API, then runs
+  `cloudflare/generate-secret.sh` — the same `scripts/seal.sh` hash-gated reseal used by
+  the other secrets — and prompts before commit/push; any declined or failed step just
+  skips the rest of the role rather than failing the play) → `argocd_apps` (applies
+  `applications/core.yaml`). From there ArgoCD deploys reflector,
   MetalLB, ingress, its own self-config, and Cloudflare (see sync-wave annotations in
   `applications/core/*.yaml`).
 - **`playbooks/apps.yml`** (stage 2) runs `secrets` (always resealing — see below) →
@@ -280,8 +282,11 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
 - `playbooks/storage.yml` (mount a disk at `/mnt/storage`) is situational — run
   individually, on demand.
 - Prompt-bearing roles/playbooks (`storage`, `secrets`, and the `cloudflare` role's
-  install/login/commit/push prompts) no-op or fall back sensibly when left blank — see
-  each role/playbook for specifics.
+  install/login/API-token/commit/push prompts) no-op or fall back sensibly when left
+  blank — see each role/playbook for specifics. The API-token prompt (gated by
+  `cloudflare_enforce_https`, default `true`) is skipped if `cloudflare_api_token` is
+  already set via `-e`; either way, a still-blank token just warns and leaves "Always
+  Use HTTPS" for manual toggling in the dashboard.
 - Tunables live in each role's `defaults/main.yml`. `kubeconfig_path` (the local,
   control-node kubeconfig used from `kubeconfig` onward) and `path_home` are shared via
   `group_vars/all.yml`.

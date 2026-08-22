@@ -12,3 +12,6 @@ cloudflare_route_dns_overwrite: true
 
 cloudflare_domain: >-
   {{ (lookup('file', path_repo_root ~ '/global/values.yaml') | from_yaml).global.domain.public.suffix }}
+
+cloudflare_enforce_https: true
+cloudflare_api_token: ""
