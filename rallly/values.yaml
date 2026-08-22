@@ -1,0 +1,5 @@
+# This chart only ships the SealedSecrets consumed by the Rallly application,
+# which is deployed from the external chart (github.com/glazrtom/rallly-selfhosted)
+# via the multi-source Application in applications/apps/rallly.yaml. The sealed
+# values are generated/managed by ./generate-secret.sh — there is nothing to
+# configure here.

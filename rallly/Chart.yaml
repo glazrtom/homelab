@@ -1,0 +1,4 @@
+apiVersion: v2
+name: rallly
+description: Rallly sealed secrets (Postgres, Garage, app) for the externally-hosted chart
+version: 0.1.0

@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rallly
+  namespace: argocd
+  labels:
+    homelab/tier: apps
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/glazrtom/rallly-selfhosted.git
+      targetRevision: feature/create-chart
+      path: charts/rallly
+      helm:
+        valueFiles:
+          - values.yaml
+        values: |
+          baseUrl: "https://rallly.glazrtom.cz"
+          supportEmail: "glazrtom.homelab@gmail.com"
+          existingSecret: rallly
+          ingress:
+            enabled: true
+            className: nginx-external
+            host: "rallly.glazrtom.cz"
+            annotations:
+              nginx.ingress.kubernetes.io/enable-global-auth: "false"
+          postgresql:
+            existingSecret: rallly-postgresql
+          garage:
+            existingSecret: rallly-garage
+          smtp:
+            host: "smtp.gmail.com"
+            port: 587
+            secure: false
+            user: "glazrtom.homelab@gmail.com"
+            rejectUnauthorized: true
+    - repoURL: https://github.com/glazrtom/homelab.git
+      targetRevision: HEAD
+      path: rallly
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rallly
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
