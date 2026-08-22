@@ -260,9 +260,12 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   from here on) → `helm` (helm + helm-diff) → `argocd` (namespace + upstream
   `install.yaml`) → `sealed_secrets` (installs the Sealed Secrets controller via Helm
   into `kube-system`) → `cloudflare` (installs/logs in `cloudflared` if needed, creates the
-  tunnel and its wildcard DNS route if missing, then runs `cloudflare/generate-secret.sh` —
-  the same `scripts/seal.sh` hash-gated reseal used by the other secrets — and prompts
-  before commit/push; any declined or failed step just skips the rest of the role rather than
+  tunnel and its wildcard DNS route if missing, prompts for a Cloudflare API token to turn
+  on the zone-level "Always Use HTTPS" setting — `cloudflare_enforce_https`, default
+  `true`; a blank token leaves it for the dashboard instead — then runs
+  `cloudflare/generate-secret.sh` — the same `scripts/seal.sh` hash-gated reseal used by
+  the other secrets — and prompts before commit/push; any declined or failed step just
+  skips the rest of the role rather than
   failing the play) → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys reflector,
   MetalLB, ingress, its own self-config, and Cloudflare (see sync-wave annotations in
   `applications/core/*.yaml`).

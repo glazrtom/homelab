@@ -256,7 +256,84 @@
     - cloudflare_dns_route.rc != 0
     - "'already exists' not in (cloudflare_dns_route.stderr | default(''))"
 
-# --- e. Token -> sealed secret -----------------------------------------------
+# --- e. Enforce HTTPS at the zone level --------------------------------------
+
+- name: Enforce HTTPS at the zone level
+  when:
+    - not cloudflare_skipped
+    - cloudflare_enforce_https | bool
+  block:
+    - name: Prompt for a Cloudflare API token to set Always Use HTTPS
+      ansible.builtin.pause:
+        prompt: >-
+          Enter a Cloudflare API token with Zone Settings:Edit permission for
+          {{ cloudflare_domain }} to enable "Always Use HTTPS" (blank = skip this step
+          and set it manually in the dashboard instead)
+        echo: false
+      register: cloudflare_api_token_prompt
+      when: cloudflare_api_token | length == 0
+
+    - name: Resolve the API token to use
+      ansible.builtin.set_fact:
+        cloudflare_api_token_resolved: >-
+          {{ cloudflare_api_token
+             if cloudflare_api_token | length > 0
+             else (cloudflare_api_token_prompt.user_input | default('') | trim) }}
+      no_log: true
+
+    - name: Look up and set Always Use HTTPS
+      when: cloudflare_api_token_resolved | length > 0
+      block:
+        - name: Look up the zone id for the domain
+          ansible.builtin.uri:
+            url: "https://api.cloudflare.com/client/v4/zones?name={{ cloudflare_domain }}"
+            headers:
+              Authorization: "Bearer {{ cloudflare_api_token_resolved }}"
+            return_content: true
+          register: cloudflare_zone_lookup
+          failed_when: false
+          no_log: true
+
+        - name: Set Always Use HTTPS on the zone
+          ansible.builtin.uri:
+            url: >-
+              https://api.cloudflare.com/client/v4/zones/{{
+              cloudflare_zone_lookup.json.result[0].id }}/settings/always_use_https
+            method: PATCH
+            headers:
+              Authorization: "Bearer {{ cloudflare_api_token_resolved }}"
+            body_format: json
+            body:
+              value: "on"
+            return_content: true
+          register: cloudflare_always_https
+          failed_when: false
+          no_log: true
+          when: >-
+            cloudflare_zone_lookup.json is defined and
+            (cloudflare_zone_lookup.json.result | default([])) | length > 0
+
+        - name: Warn if Always Use HTTPS could not be confirmed
+          ansible.builtin.debug:
+            msg: >-
+              Could not enable "Always Use HTTPS" for {{ cloudflare_domain }}
+              automatically. Set it manually: Cloudflare dashboard -> SSL/TLS ->
+              Edge Certificates -> Always Use HTTPS.
+          when: >-
+            (cloudflare_zone_lookup.json is not defined) or
+            ((cloudflare_zone_lookup.json.result | default([])) | length == 0) or
+            (cloudflare_always_https.json is not defined) or
+            not (cloudflare_always_https.json.success | default(false))
+
+    - name: Note that Always Use HTTPS was left to manual setup
+      ansible.builtin.debug:
+        msg: >-
+          No Cloudflare API token provided — "Always Use HTTPS" was not changed.
+          Set it manually: Cloudflare dashboard -> SSL/TLS -> Edge Certificates ->
+          Always Use HTTPS.
+      when: cloudflare_api_token_resolved | length == 0
+
+# --- f. Token -> sealed secret -----------------------------------------------
 
 - name: Generate and seal the tunnel token
   ansible.builtin.command:
@@ -280,7 +357,7 @@
     - not cloudflare_skipped
     - cloudflare_generate_secret.rc != 0
 
-# --- f. Commit -----------------------------------------------------------
+# --- g. Commit -----------------------------------------------------------
 
 - name: Commit the sealed tunnel token if it changed
   when: not cloudflare_skipped
