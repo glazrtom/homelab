@@ -58,6 +58,8 @@
     "allow": [
       "Bash(kubectl get *)",
       "Bash(kubectl logs *)",
+      "Bash(gh issue *)",
+      "WebFetch(domain:api.github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:longhorn.io)",
       "WebFetch(domain:charts.longhorn.io)",
@@ -78,8 +80,6 @@
       "WebFetch(domain:release-assets.githubusercontent.com)"
     ],
     "ask": [
-      "Bash(git push*)",
-      "Bash(git commit*)",
       "Bash(kubectl apply*)",
       "Bash(kubectl patch*)",
       "Bash(kubectl edit*)",

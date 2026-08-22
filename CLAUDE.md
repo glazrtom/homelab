@@ -29,6 +29,14 @@ is the only gate between an edit and production.
 - Before opening the PR, render anything you touched (`helm template <chart>/ -f
   global/values.yaml -f <chart>/values.yaml`) — a chart that fails to template leaves the
   Application stuck `OutOfSync` in the cluster.
+- Commit with plain `-m` flags (repeat `-m` for extra paragraphs). Never wrap the message
+  in a heredoc or `$(...)` — command substitution disables prefix permission matching, so
+  a `$(cat <<EOF …)` commit is denied in headless runs (the `@claude` GitHub Action) even
+  though `Bash(git commit:*)` is allowed.
+- Interactive-only permission rules (e.g. `git commit`/`git push` under `ask`) belong in
+  the git-ignored `.claude/settings.local.json`, not the tracked `.claude/settings.json` —
+  the `@claude` GitHub Action loads project settings too, and an `ask` rule there outranks
+  the workflow's `--allowedTools` and hard-denies in headless runs.
 
 ## How deployment works
 
