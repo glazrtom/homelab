@@ -37,6 +37,12 @@ is the only gate between an edit and production.
   the git-ignored `.claude/settings.local.json`, not the tracked `.claude/settings.json` —
   the `@claude` GitHub Action loads project settings too, and an `ask` rule there outranks
   the workflow's `--allowedTools` and hard-denies in headless runs.
+- Validate before opening the PR, per what you touched: charts with `helm template` (as
+  above); Ansible with `cd ansible && ansible-playbook --syntax-check playbooks/<pb>.yml`
+  — the `--syntax-check` flag must come **immediately** after `ansible-playbook`, since
+  that exact prefix is what the `@claude` Action allowlists (a full play run is
+  deliberately not permitted); plain YAML with `yamllint <file>` (chart templates are Go
+  templates and are excluded via `.yamllint.yml`).
 
 ## How deployment works
 
