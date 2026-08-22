@@ -10,6 +10,26 @@ Changes are deployed by committing/pushing to `github.com/glazrtom/homelab.git`;
 watches `HEAD` and auto-syncs (`automated: {prune, selfHeal}`). There is no CI, no
 Makefile/Taskfile, and no build step.
 
+**Everything runs on Kubernetes — there is no Docker Compose anywhere in this repo**, and
+new services must not introduce it. A workload is a local Helm chart plus an ArgoCD
+`Application`; multi-container workloads are pods with sidecars (e.g. prowlarr's gluetun
+VPN sidecar in `media/`), not compose services. The single k3s node is provisioned by
+`ansible/` (see Provisioning below); everything above the node is ArgoCD's.
+
+## Git workflow (mandatory)
+
+**Always work on a feature branch and open a PR into `master`. Never push to `master`
+directly.** This is not stylistic: ArgoCD watches `HEAD` of `master` with
+`automated: {prune, selfHeal}`, so anything landing on `master` is deployed to the live
+cluster within minutes, with no review step and no CI to catch a broken template. The PR
+is the only gate between an edit and production.
+
+- Branch off `master` (`git switch -c <topic>`), commit there, push the branch, open a PR.
+- Let the PR merge into `master`; that merge is what triggers the deploy.
+- Before opening the PR, render anything you touched (`helm template <chart>/ -f
+  global/values.yaml -f <chart>/values.yaml`) — a chart that fails to template leaves the
+  Application stuck `OutOfSync` in the cluster.
+
 ## How deployment works
 
 - Each service is registered as an ArgoCD `Application` CR under `applications/core/`
@@ -159,8 +179,29 @@ non-deterministic (fresh random session key/padding per run), so an unconditiona
 would show as a git diff on every run even with nothing to change. Sealed secrets are
 encrypted against one specific cluster's key, so re-run these after provisioning a new
 cluster — `ansible/roles/secrets` does this automatically (see Provisioning below).
-`**/secrets/` is git-ignored at the repo root; never commit plaintext from it. Some
-bootstrap secrets (TLS, Tailscale) are instead created imperatively — see `init.sh`.
+Plaintext lives in per-chart `secrets/` dirs, git-ignored via the root `.gitignore`'s
+`/*/secrets/` (top-level charts only — a `secrets/` dir nested deeper is **not** covered,
+so keep plaintext at `<chart>/secrets/`). Some bootstrap secrets (TLS, Tailscale) are
+instead created imperatively — see `init.sh`.
+
+### Never commit
+
+- Anything out of a `secrets/` dir — the plaintext `Secret` manifests the generate scripts
+  read and write. Only the `kubeseal` output (`sealed-*.yaml`, `*-sealed.yaml`) is
+  committable.
+- Kubeconfigs. `ansible/roles/kubeconfig` fetches the cluster kubeconfig to `~/.kube/config`
+  on the control node; it carries admin client certs and belongs nowhere in this repo.
+- The Cloudflare tunnel token/credentials JSON, the GHCR PAT, Windscribe credentials, and
+  the Authentik keys (Postgres password, Django secret key, akadmin bootstrap
+  password/token, LDAP bind key, OIDC client secrets) in any un-sealed form.
+- `.env` files or literal values pasted inline into a chart's `values.yaml` — charts
+  reference secrets by name (`windscribe-auth`, `authentik-secrets`, …); they never inline
+  them.
+- Longhorn/PVC data dumps or backups.
+
+If plaintext does get committed, the value is burned: rotate it at the source, re-run that
+app's `generate-*.sh`, and commit the new sealed file — rewriting history alone is not
+enough.
 
 `authentik/generate-secret.sh` owns a single `authentik-secrets` secret carrying every
 key the chart needs (Postgres password, Django secret key, akadmin bootstrap
