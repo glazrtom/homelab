@@ -12,6 +12,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ printf "%s-%s-pvc" (include "lib.fullname" $) $name }}
   namespace: {{ include "lib.namespace" $ }}
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   storageClassName: {{ $v.storageClassName | default "longhorn" }}
   accessModes:

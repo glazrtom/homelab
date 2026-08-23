@@ -2,6 +2,8 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: shared-media-transmission-pv
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   capacity:
     storage: {{ .Values.global.sharedMedia.size }}
@@ -27,6 +29,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: transmission-media-pvc
   namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   accessModes:
     - ReadWriteMany

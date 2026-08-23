@@ -227,6 +227,26 @@ in `global/values.yaml` (`size` and `sizeBytes`, kept in sync); resizing a confi
 one-line change to that app's `volume.config.size`. There is no host-path storage left in
 any chart.
 
+Every rendered PV/PVC carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
+(`lib.pvc` in `lib/templates/_pvc.tpl` for config volumes; each shared-media/calibre chart's
+hand-written `pvc-*.yaml` for the rest). This means neither an ordinary prune nor deleting the
+owning Application (e.g. renaming an ApplicationSet generator element — see Provisioning
+pitfalls below) can remove a data volume; retiring one for real is a manual two-step:
+`kubectl delete pvc`, then delete the now-`Released` PV and its Longhorn volume. Config PVCs
+are dynamically provisioned (Longhorn keys the volume off the PVC's UID), so a PVC that does
+get deleted and recreated comes back **empty** even with the same name — recovering the data
+means binding a temporary PVC to the orphaned (`Retain`ed) PV and copying it across, since it
+does not rejoin automatically like the static shared-media volumes do.
+
+## Provisioning pitfalls
+
+**Never rename a `media/application/Application.yaml` (or any ApplicationSet) generator
+element in place.** ArgoCD deletes the Application for the old name and creates a new one for
+the new name; the delete cascades into every resource that Application owned. This has
+happened once already and deleted prowlarr's config PVC. If a rename is genuinely needed, set
+`spec.syncPolicy.preserveResourcesOnDeletion: true` on the ApplicationSet first, push that,
+then rename.
+
 ## Secrets
 
 **Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
