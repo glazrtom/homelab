@@ -23,26 +23,27 @@ ARGOCD_POLL_INTERVAL="${ARGOCD_POLL_INTERVAL:-10}"
 
 API="https://${ARGOCD_SERVER}/api/v1"
 
-# api_call <path> -> prints body on stdout, sets HTTP_CODE. Never fails on its own -
-# callers decide what a given status code means (fatal vs. "app is gone").
+# api_call <path> -> prints "<body>\n<code>" on stdout. Never fails on its own -
+# callers decide what a given status code means (fatal vs. "app is gone"). Deliberately
+# does not set a variable for the code: command substitution runs in a subshell, so an
+# assignment made inside this function would never be visible to the caller.
 api_call() {
-  local out
-  out="$(curl --silent --show-error --retry 3 --retry-delay 2 -w '\n%{http_code}' \
+  curl --silent --show-error --retry 3 --retry-delay 2 -w '\n%{http_code}' \
     -H "Authorization: Bearer ${ARGOCD_AUTH_TOKEN}" \
     -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
     -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
-    "${API}$1")"
-  HTTP_CODE="${out##*$'\n'}"
-  printf '%s\n' "${out%$'\n'"${HTTP_CODE}"}"
+    "${API}$1"
 }
 
 # api_get <path> -> body on stdout; fails loudly (prints path/code/body) on non-200.
 # Used where a failure is genuinely fatal: enumerating apps, refreshing/checking core+apps.
 api_get() {
-  local body
-  body="$(api_call "$1")"
-  if [ "$HTTP_CODE" != "200" ]; then
-    echo "FATAL: GET $1 -> HTTP ${HTTP_CODE}" >&2
+  local out code body
+  out="$(api_call "$1")"
+  code="$(tail -n1 <<<"$out")"
+  body="$(sed '$d' <<<"$out")"
+  if [ "$code" != "200" ]; then
+    echo "FATAL: GET $1 -> HTTP ${code}" >&2
     echo "$body" >&2
     return 1
   fi
@@ -54,13 +55,15 @@ api_get() {
 # loudly on anything else. Used for every per-child call, since children come and go as
 # the media ApplicationSet regenerates its instances mid-run.
 api_get_soft() {
-  local body
-  body="$(api_call "$1")"
-  case "$HTTP_CODE" in
+  local out code body
+  out="$(api_call "$1")"
+  code="$(tail -n1 <<<"$out")"
+  body="$(sed '$d' <<<"$out")"
+  case "$code" in
     200) printf '%s\n' "$body"; return 0 ;;
     403|404) return 1 ;;
     *)
-      echo "FATAL: GET $1 -> HTTP ${HTTP_CODE}" >&2
+      echo "FATAL: GET $1 -> HTTP ${code}" >&2
       echo "$body" >&2
       return 1
       ;;
