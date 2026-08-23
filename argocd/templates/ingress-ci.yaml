@@ -1,0 +1,32 @@
+{{/*
+Dedicated ungated host for the GitHub Actions deploy-gate workflow. Deliberately
+hand-written rather than lib.ingress: lib.ingress always renders an internal twin off
+app.domainPrefix, and this host must be external-only with a different prefix, and never
+gated (no gatedApps entry). It is not open to the internet - argo-ci.glazrtom.cz is fronted
+by a Cloudflare Access service token, enforced at Cloudflare's edge before the tunnel.
+*/}}
+{{- if .Values.ci.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress-ci
+  namespace: {{ .Values.namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/enable-global-auth: "false"
+    nginx.ingress.kubernetes.io/limit-rps: {{ .Values.ci.rateLimit.rps | quote }}
+    nginx.ingress.kubernetes.io/limit-connections: {{ .Values.ci.rateLimit.connections | quote }}
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: {{ .Values.ci.rateLimit.burstMultiplier | quote }}
+spec:
+  ingressClassName: {{ .Values.global.ingress.external.className }}
+  rules:
+    - host: {{ .Values.ci.domainPrefix }}.{{ .Values.global.domain.public.suffix }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.service.name }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}

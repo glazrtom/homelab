@@ -1,0 +1,20 @@
+{{/*
+Overrides the argocd-rbac-cm upstream install.yaml ships empty. Grants the CI account
+(cm.yaml) read-only access to Applications - enough for the deploy-gate workflow's
+refresh + wait, nothing else. The built-in admin user is unaffected by policy.csv.
+*/}}
+{{- if .Values.ci.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.default: ""
+  policy.csv: |
+    p, role:ci, applications, get, */*, allow
+    g, {{ .Values.ci.account }}, role:ci
+{{- end }}

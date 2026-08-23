@@ -1,0 +1,19 @@
+{{/*
+Overrides the argocd-cm upstream install.yaml ships empty. Adds the apiKey-only CI
+account used by the GitHub Actions deploy-gate workflow (see ingress-ci.yaml,
+rbac-cm.yaml) - apiKey (not login) means it can hold a generated token but never a UI
+session.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  url: https://{{ .Values.app.domainPrefix }}.{{ .Values.global.domain.public.suffix }}
+  {{- if .Values.ci.enabled }}
+  accounts.{{ .Values.ci.account }}: apiKey
+  {{- end }}

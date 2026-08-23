@@ -14,3 +14,12 @@ ingress:
   enabled: true
   external: true
   auth: true
+
+ci:
+  enabled: true
+  domainPrefix: argo-ci
+  account: github-actions
+  rateLimit:
+    rps: 20
+    connections: 20
+    burstMultiplier: 5
