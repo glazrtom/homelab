@@ -10,7 +10,7 @@ spec:
   task: snapshot
   groups:
     - protected
-  retain: 8
+  retain: 3
   concurrency: 1
 ---
 apiVersion: longhorn.io/v1beta2
@@ -25,7 +25,7 @@ spec:
   task: snapshot
   groups:
     - protected
-  retain: 7
+  retain: 3
   concurrency: 1
 {{- if .Values.backup.enabled }}
 ---
