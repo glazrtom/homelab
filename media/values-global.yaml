@@ -5,3 +5,9 @@ prowlarr:
   enabled: true
   app:
     domainPrefix: prowlarr
+
+defineGlobalPvc:
+  enabled: true
+
+defineSharedAuth:
+  enabled: true

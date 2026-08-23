@@ -1,0 +1,10 @@
+{{/*
+prowlarr, radarr and sonarr are gated (ingress.auth: true) but live across two ArgoCD
+Applications (media-global, media-personal) in the same namespace - lib.authOutpost's
+objects are namespace singletons, so only one owner may render them or ArgoCD reports
+SharedResource/RepeatedResource warnings and neither Application reaches Synced. The
+media-global instance owns them, same as it owns the shared media PV/PVC below.
+*/}}
+{{- if .Values.defineSharedAuth.enabled }}
+{{ include "lib.authOutpostObjects" (dict "root" . "external" true) }}
+{{- end }}

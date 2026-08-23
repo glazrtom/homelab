@@ -5,6 +5,9 @@ global:
 defineGlobalPvc:
   enabled: false
 
+defineSharedAuth:
+  enabled: false
+
 prowlarr:
   enabled: false
   app:

@@ -9,10 +9,8 @@ spec:
   generators:
     - list:
         elements:
-          - name: prowlarr
-            valuesFile: values-prowlarr.yaml
-          - name: media-pvc
-            valuesFile: values-global-pvc.yaml
+          - name: media-global
+            valuesFile: values-global.yaml
           - name: media-personal
             valuesFile: values-main.yaml
   template:

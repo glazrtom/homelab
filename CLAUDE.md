@@ -66,7 +66,8 @@ Validate whatever you touched before handing work back (interactive) or opening 
   is a self-contained local Helm chart (`Chart.yaml`, `values.yaml`, `templates/`).
 - `media/` is different: `media/application/Application.yaml` is an **ApplicationSet**
   with a list generator that instantiates the same `media/` chart multiple times
-  (prowlarr, shared PVCs, main) each with a different per-instance values file.
+  (`media-global`: prowlarr + the shared PVC + the shared Authentik outpost objects;
+  `media-personal`: radarr + sonarr) each with a different per-instance values file.
 
 ## Global values (shared config)
 
@@ -119,6 +120,12 @@ one, and `lib.ingress` `fail`s the template if the key is missing:
 creates the in-namespace `ExternalName` alias(es) and the `authentik-auth-headers`
 ConfigMap the Ingress-level annotations reference; add a matching `gatedApps` entry too.
 Hosts that must not be gated at all (plex, calibre, Authentik itself) set `auth: false`.
+These objects are namespace singletons keyed by fixed names — if several charts sharing
+one namespace are split across multiple ArgoCD Applications (e.g. `media/`'s
+per-instance Applications), only one of them may render `lib.authOutpost`/
+`lib.authOutpostObjects`, or ArgoCD reports SharedResource/RepeatedResource warnings and
+none of them reach `Synced`; see `media/templates/authentik-outpost.yaml` for the
+pattern (the `media-global` instance owns them, gated by its own values flag).
 
 There are **two proxy outposts**, keyed the same way as `global.ingress`:
 `global.authentik.outposts.{external,internal}`. The embedded (`external`) outpost's
