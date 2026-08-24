@@ -1,0 +1,38 @@
+# Applies authentik-blueprints synchronously after every sync, instead of waiting on the
+# worker's own hourly discovery (or a ConfigMap volume update it doesn't reliably notice).
+# `ak apply_blueprint` runs Importer.validate() first and exits non-zero with the per-entry
+# errors on a bad model/!Find/!KeyOf, which fails this Job, which fails the ArgoCD sync -
+# turning a silently-broken blueprint into a red deploy. It ignores importer.apply()'s own
+# return value though, so a rare apply-time failure after a passing validation still exits 0.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-blueprint-apply
+  namespace: {{ include "lib.namespace" . }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: authentik
+      containers:
+        - name: apply-blueprint
+          image: ghcr.io/goauthentik/server:{{ .Subcharts.authentik.Chart.AppVersion }}
+          imagePullPolicy: IfNotPresent
+          command: ["ak", "apply_blueprint", "mounted/cm-authentik-blueprints/access.yaml"]
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}
+            - secretRef:
+                name: authentik-secrets
+          volumeMounts:
+            - name: blueprints-cm-authentik-blueprints
+              mountPath: /blueprints/mounted/cm-authentik-blueprints
+      volumes:
+        - name: blueprints-cm-authentik-blueprints
+          configMap:
+            name: authentik-blueprints

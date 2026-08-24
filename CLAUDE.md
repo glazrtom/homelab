@@ -179,7 +179,18 @@ serves every gated app's assets and would break under a low cap); setting `rateL
 alongside `auth: true` is a template error — a gated host doesn't need the extra layer.
 
 Authentik (SSO/IdP) is deployed from `authentik/` (official upstream chart, with a
-bundled postgres, refactored onto the `lib/` templates like the other apps).
+bundled postgres, refactored onto the `lib/` templates like the other apps). Its
+declarative config (`gatedApps`, providers, outposts, the LDAP bind account, Jellyfin's
+OIDC clients) lives in one blueprint, rendered into the `authentik-blueprints` ConfigMap
+by `authentik/templates/blueprint-access.yaml` and applied by
+`authentik/templates/job-blueprint-apply.yaml`, an ArgoCD `PostSync` hook Job that runs
+`ak apply_blueprint` against the just-synced ConfigMap. This makes a `gatedApps` edit
+live as soon as the deploy goes green, instead of waiting on the worker's own hourly
+blueprint discovery; it also means a blueprint that fails to validate (bad model,
+unresolvable `!Find`, wrong `!KeyOf` order) fails the Job and the sync rather than
+silently no-opping inside the worker. The Job's image tag tracks the `authentik`
+subchart pin in `authentik/Chart.yaml`, so bumping that dependency carries the Job
+along with it.
 
 ## Deploy verification (CI)
 
@@ -188,7 +199,10 @@ bundled postgres, refactored onto the `lib/` templates like the other apps).
 `scripts/argocd-wait.sh`) so ArgoCD picks the commit up immediately instead of waiting out
 its poll interval, then blocks until each is `Synced`/`Healthy` at that commit, failing the
 job otherwise. This is the only automated signal that a push actually deployed cleanly —
-there is no other CI in this repo.
+there is no other CI in this repo. This also covers Authentik blueprint validity, since
+the `authentik` Application only reports `Synced` once its `PostSync` blueprint-apply
+Job (see Networking above) exits 0; `ARGOCD_WAIT_TIMEOUT` is raised to 300s in the
+workflow to give that Job room to run.
 
 It talks to ArgoCD over a dedicated, ungated host, `argo-ci.glazrtom.cz`
 (`argocd/templates/ingress-ci.yaml`, `argocd.ci` in `argocd/values.yaml`) —
