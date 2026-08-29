@@ -15,6 +15,9 @@ rallly:
     host: "rallly.glazrtom.cz"
     annotations:
       nginx.ingress.kubernetes.io/enable-global-auth: "false"
+      nginx.ingress.kubernetes.io/limit-rps: "20"
+      nginx.ingress.kubernetes.io/limit-connections: "20"
+      nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
   postgresql:
     existingSecret: rallly-postgresql
   garage:
