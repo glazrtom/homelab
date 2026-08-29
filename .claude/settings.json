@@ -70,8 +70,16 @@
     ]
   },
 
+  "enabledMcpjsonServers": [
+    "kubernetes"
+  ],
+
   "permissions": {
     "allow": [
+      "Bash(helm dependency *)",
+      "Bash(helm template *)",
+      "Bash(gh run *)",
+      "Bash(kubectl config *)",
       "Bash(kubectl get *)",
       "Bash(kubectl logs *)",
       "Bash(gh issue *)",
