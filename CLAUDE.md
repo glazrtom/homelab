@@ -56,9 +56,24 @@ Validate whatever you touched before handing work back (interactive) or opening 
 
 Cluster reads should go through the `mcp__kubernetes__*` MCP tools first, falling back to
 sandboxed `kubectl --context homelab` for verbs the MCP doesn't cover (e.g. `rollout status`,
-`wait`). `dangerouslyDisableSandbox` should not be needed for read-only work — a sandbox network
-failure means `sandbox.network.allowedDomains` in `.claude/settings.json` is missing a host, not
-a cue to turn the sandbox off.
+`wait`, `port-forward`, `kubeseal`, `helm status`/`list`, or `curl` to a LAN host). Prefix
+that fallback with `NO_PROXY=localhost,127.0.0.1 no_proxy=localhost,127.0.0.1 ` — the API
+server is `https://10.0.0.1:6443`, and Claude Code's sandbox appends `10.0.0.0/8` (and the
+other RFC1918 ranges) to `NO_PROXY`, so an unprefixed `kubectl` bypasses the sandbox's
+filtering proxy and connects direct, which the sandbox denies at `connect()`. With the
+prefix the request goes through the proxy, where `sandbox.network.allowedDomains`' `10.0.0.1`
+entry admits it. `.claude/settings.json`'s own `env.NO_PROXY` can't fix this — the private
+ranges are appended after it — so the prefix has to be per-command. A cluster command failing
+with `connect: operation not permitted` means the prefix is missing, not a cue to reach for
+`dangerouslyDisableSandbox`; `*.internal` hosts need no prefix (hostnames aren't matched by
+the CIDR entries).
+
+Keep exploration commands inside the sandbox's built-in read-only set so they don't need
+`dangerouslyDisableSandbox` or a permission prompt: use the scratchpad's literal path rather
+than `$TMPDIR`, avoid `for … do … done` loops and `$(...)` command substitution (which also
+disables prefix permission matching — relevant for the `gh *` family, always unsandboxed per
+`excludedCommands`), prefer parallel `Read`/`Grep`/`Glob` calls over a `cd … ; cat a; cat b`
+chain, and don't combine `cd` with `git` in one command.
 
 ## How deployment works
 
