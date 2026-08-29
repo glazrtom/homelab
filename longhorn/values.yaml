@@ -28,7 +28,9 @@ backup:
     # host comes from AWS_ENDPOINTS in the credential secret.
     url: "s3://glazrtom-homelab-longhorn@eu-central-003/"
     credentialSecret: longhorn-b2-credentials
-    pollInterval: "300"
+    # A Go time.Duration string - a bare number (e.g. "300") is rejected by the
+    # longhorn.io mutating webhook with "missing unit in duration".
+    pollInterval: "300s"
 bulkClassName: longhorn-bulk
 
 # --- upstream subchart overrides ------------------------------------------
