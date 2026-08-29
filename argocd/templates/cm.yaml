@@ -20,7 +20,7 @@ data:
   {{- if .Values.oidc.enabled }}
   # Public issuer only - the browser SSO session from Authentik forward-auth on
   # argo.internal doesn't carry over, since ArgoCD's callback is always built from
-  # the public `url` above. See CLAUDE.md for the LAN break-glass path.
+  # the public `url` above.
   oidc.config: |
     name: {{ .Values.oidc.name }}
     issuer: https://{{ .Values.oidc.authPrefix }}.{{ .Values.global.domain.public.suffix }}/application/o/{{ .Values.oidc.slug }}/

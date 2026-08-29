@@ -1,5 +1,9 @@
 {
   "plansDirectory": ".claude/plans",
+  "env": {
+    "NO_PROXY": "localhost,127.0.0.1,::1,169.254.0.0/16",
+    "no_proxy": "localhost,127.0.0.1,::1,169.254.0.0/16"
+  },
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
@@ -25,12 +29,23 @@
     "network": {
       "allowedDomains": [
         "10.0.0.1",
+        "argo.internal",
+        "auth.internal",
+        "longhorn.internal",
+        "argo-ci.glazrtom.cz",
+        "api.github.com",
+        "registry.npmjs.org",
         "github.com",
         "raw.githubusercontent.com",
         "objects.githubusercontent.com",
         "ghcr.io",
         "bitnami.github.io",
         "charts.goauthentik.io",
+        "charts.longhorn.io",
+        "longhorn.io",
+        "index.docker.io",
+        "auth.docker.io",
+        "galaxy.ansible.com",
         "metallb.github.io",
         "emberstack.github.io",
         "kubernetes.github.io",
@@ -50,7 +65,8 @@
     "excludedCommands": [
       "docker *",
       "open *",
-      "osascript *"
+      "osascript *",
+      "gh *"
     ]
   },
 
@@ -59,6 +75,26 @@
       "Bash(kubectl get *)",
       "Bash(kubectl logs *)",
       "Bash(gh issue *)",
+      "Bash(gh run list*)",
+      "Bash(gh run view*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr diff*)",
+      "Bash(gh workflow list*)",
+      "mcp__kubernetes__pods_list",
+      "mcp__kubernetes__pods_list_in_namespace",
+      "mcp__kubernetes__pods_get",
+      "mcp__kubernetes__pods_log",
+      "mcp__kubernetes__pods_top",
+      "mcp__kubernetes__resources_list",
+      "mcp__kubernetes__resources_get",
+      "mcp__kubernetes__events_list",
+      "mcp__kubernetes__namespaces_list",
+      "mcp__kubernetes__nodes_log",
+      "mcp__kubernetes__nodes_top",
+      "mcp__kubernetes__nodes_stats_summary",
+      "mcp__kubernetes__configuration_contexts_list",
+      "mcp__kubernetes__configuration_view",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:longhorn.io)",

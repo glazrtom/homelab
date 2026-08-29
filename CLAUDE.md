@@ -54,6 +54,12 @@ Validate whatever you touched before handing work back (interactive) or opening 
 - Plain YAML: `yamllint <file>` (chart templates are Go templates and are excluded via
   `.yamllint.yml`).
 
+Cluster reads should go through the `mcp__kubernetes__*` MCP tools first, falling back to
+sandboxed `kubectl --context homelab` for verbs the MCP doesn't cover (e.g. `rollout status`,
+`wait`). `dangerouslyDisableSandbox` should not be needed for read-only work — a sandbox network
+failure means `sandbox.network.allowedDomains` in `.claude/settings.json` is missing a host, not
+a cue to turn the sandbox off.
+
 ## How deployment works
 
 - Each service is registered as an ArgoCD `Application` CR under `applications/core/`
