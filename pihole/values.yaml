@@ -28,6 +28,7 @@ service:
   port: 80
 
 ingress:
+  external: true
   auth: true
 
 strategy:

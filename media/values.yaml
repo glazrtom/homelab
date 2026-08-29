@@ -18,7 +18,7 @@ prowlarr:
     tag: "2.5.2"
   ingress:
     enabled: true
-    external: false
+    external: true
     auth: true
   volumes:
     config:
@@ -54,7 +54,7 @@ radarr:
     tag: "6.3.0"
   ingress:
     enabled: true
-    external: false
+    external: true
     auth: true
   volumes:
     config:
@@ -76,7 +76,7 @@ sonarr:
     tag: "4.0.19"
   ingress:
     enabled: true
-    external: false
+    external: true
     auth: true
   volumes:
     config:
