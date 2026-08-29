@@ -1,5 +1,27 @@
-# This chart only ships the SealedSecrets consumed by the Rallly application,
-# which is deployed from the external chart (github.com/glazrtom/rallly-selfhosted)
-# via the multi-source Application in applications/apps/rallly.yaml. The sealed
-# values are generated/managed by ./generate-secret.sh — there is nothing to
-# configure here.
+# Deployed from the released chart at oci://ghcr.io/glazrtom/charts/rallly (see
+# Chart.yaml). The existingSecret* keys below point at the SealedSecrets in
+# templates/sealed-secret.yaml, generated/managed by ./generate-secret.sh — the
+# chart's own generation relies on Helm `lookup`, which does not work under
+# ArgoCD (`helm template`), so it would mint fresh random credentials on every
+# render and break the already-initialised Postgres/Garage data.
+
+rallly:
+  baseUrl: "https://rallly.glazrtom.cz"
+  supportEmail: "glazrtom.homelab@gmail.com"
+  existingSecret: rallly
+  ingress:
+    enabled: true
+    className: nginx-external
+    host: "rallly.glazrtom.cz"
+    annotations:
+      nginx.ingress.kubernetes.io/enable-global-auth: "false"
+  postgresql:
+    existingSecret: rallly-postgresql
+  garage:
+    existingSecret: rallly-garage
+  smtp:
+    host: "smtp.gmail.com"
+    port: 587
+    secure: false
+    user: "glazrtom.homelab@gmail.com"
+    rejectUnauthorized: true
