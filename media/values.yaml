@@ -27,6 +27,7 @@ prowlarr:
       storageClassName: longhorn
       mountPath: /config
   sidecarsTemplate: prowlarr.vpnContainer
+  extraEnvTemplate: media.authEnv
   vpn:
     image: qmcgaw/gluetun
     env:
@@ -56,6 +57,7 @@ radarr:
     enabled: true
     external: true
     auth: true
+  extraEnvTemplate: media.authEnv
   volumes:
     config:
       create: true
@@ -78,6 +80,7 @@ sonarr:
     enabled: true
     external: true
     auth: true
+  extraEnvTemplate: media.authEnv
   volumes:
     config:
       create: true
