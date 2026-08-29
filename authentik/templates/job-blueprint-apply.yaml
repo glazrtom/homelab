@@ -1,9 +1,13 @@
 # Applies authentik-blueprints synchronously after every sync, instead of waiting on the
 # worker's own hourly discovery (or a ConfigMap volume update it doesn't reliably notice).
-# `ak apply_blueprint` runs Importer.validate() first and exits non-zero with the per-entry
-# errors on a bad model/!Find/!KeyOf, which fails this Job, which fails the ArgoCD sync -
-# turning a silently-broken blueprint into a red deploy. It ignores importer.apply()'s own
-# return value though, so a rare apply-time failure after a passing validation still exits 0.
+#
+# Runs Importer.apply() directly via `ak shell -c` rather than the `ak apply_blueprint`
+# management command: that command calls Importer.validate() (a full dry-run apply inside
+# a rolled-back transaction) and then apply() (the same work for real), roughly doubling
+# runtime for no benefit here - apply() already rolls back cleanly via its own atomic()
+# block on any error, and its return value is checked below to fail the Job (and so the
+# ArgoCD sync) on a bad model/!Find/!KeyOf, instead of silently exiting 0 the way
+# `ak apply_blueprint` does (it discards apply()'s return value).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -23,7 +27,23 @@ spec:
         - name: apply-blueprint
           image: ghcr.io/goauthentik/server:{{ .Subcharts.authentik.Chart.AppVersion }}
           imagePullPolicy: IfNotPresent
-          command: ["ak", "apply_blueprint", "mounted/cm-authentik-blueprints/access.yaml"]
+          command:
+            - ak
+            - shell
+            - -c
+            - |
+              import sys
+              from authentik.blueprints.models import BlueprintInstance
+              from authentik.blueprints.v1.importer import Importer
+              from authentik.tenants.models import Tenant
+
+              path = "mounted/cm-authentik-blueprints/access.yaml"
+              ok = True
+              for tenant in Tenant.objects.filter(ready=True):
+                  with tenant:
+                      if not Importer.from_string(BlueprintInstance(path=path).retrieve()).apply():
+                          ok = False
+              sys.exit(0 if ok else 1)
           envFrom:
             - secretRef:
                 name: {{ .Release.Name }}

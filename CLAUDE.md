@@ -191,25 +191,30 @@ declarative config (`gatedApps`, providers, outposts, the LDAP bind account, Jel
 OIDC clients) lives in one blueprint, rendered into the `authentik-blueprints` ConfigMap
 by `authentik/templates/blueprint-access.yaml` and applied by
 `authentik/templates/job-blueprint-apply.yaml`, an ArgoCD `PostSync` hook Job that runs
-`ak apply_blueprint` against the just-synced ConfigMap. This makes a `gatedApps` edit
-live as soon as the deploy goes green, instead of waiting on the worker's own hourly
-blueprint discovery; it also means a blueprint that fails to validate (bad model,
-unresolvable `!Find`, wrong `!KeyOf` order) fails the Job and the sync rather than
-silently no-opping inside the worker. The Job's image tag tracks the `authentik`
-subchart pin in `authentik/Chart.yaml`, so bumping that dependency carries the Job
-along with it.
+`Importer.apply()` (via `ak shell -c`, not the `ak apply_blueprint` management command —
+that command also runs a full `Importer.validate()` dry-run first, roughly doubling
+runtime for no benefit here) against the just-synced ConfigMap. This makes a `gatedApps`
+edit live as soon as the sync's hooks finish, instead of waiting on the worker's own
+hourly blueprint discovery; it also means a blueprint that fails to apply (bad model,
+unresolvable `!Find`, wrong `!KeyOf` order) fails the Job — and, because the Job's exit
+code is checked, the sync operation itself — rather than silently no-opping inside the
+worker. The Job's image tag tracks the `authentik` subchart pin in `authentik/Chart.yaml`,
+so bumping that dependency carries the Job along with it.
 
 ## Deploy verification (CI)
 
 `.github/workflows/deploy.yml` runs on every push to `master`: it hard-refreshes the
 `core`/`apps` app-of-apps Applications plus every child Application (via
 `scripts/argocd-wait.sh`) so ArgoCD picks the commit up immediately instead of waiting out
-its poll interval, then blocks until each is `Synced`/`Healthy` at that commit, failing the
-job otherwise. This is the only automated signal that a push actually deployed cleanly —
-there is no other CI in this repo. This also covers Authentik blueprint validity, since
-the `authentik` Application only reports `Synced` once its `PostSync` blueprint-apply
-Job (see Networking above) exits 0; `ARGOCD_WAIT_TIMEOUT` is raised to 300s in the
-workflow to give that Job room to run.
+its poll interval, then blocks until each is `Synced`/`Healthy` at that commit **and** its
+sync operation has left `Running`/`Terminating` — `app_ok()` checks
+`.status.operationState.phase` alongside sync/health, since ArgoCD marks an app
+`Synced`/`Healthy` as soon as resources reconcile, before any `PostSync` hook (e.g.
+authentik's blueprint-apply Job, see Networking above) has finished. Without that check a
+push could go green minutes before a `gatedApps`/OIDC-provider edit actually took effect.
+This is the only automated signal that a push actually deployed cleanly — there is no
+other CI in this repo. `ARGOCD_WAIT_TIMEOUT` is raised to 900s (workflow `timeout-minutes:
+20`) to give the blueprint-apply Job room to run.
 
 It talks to ArgoCD over a dedicated, ungated host, `argo-ci.glazrtom.cz`
 (`argocd/templates/ingress-ci.yaml`, `argocd.ci` in `argocd/values.yaml`) —
@@ -238,6 +243,17 @@ would redirect out to the public host and fail), and via
 `kubectl port-forward -n argocd svc/argocd-server 8080:80` if Authentik itself is
 down, since that path depends on nothing but the cluster.
 
+`argocd-server` caches its OIDC TLS client config once, at `SessionManager`
+construction — it does not pick up a change to `oidc.config` in a running process. A
+server that booted before `oidc.config` first existed (or before it changes ever again)
+keeps using the pre-OIDC fallback, a certificate pool containing only ArgoCD's own
+self-signed cert, so it rejects Authentik's real (Cloudflare-issued) certificate on
+every session-token verification: login succeeds but every following API call 401s and
+you're bounced straight back to the login page. **A `kubectl -n argocd rollout restart
+deploy/argocd-server` is required any time `oidc.config` is added or changed** — this
+is a live-cluster action, not something the chart can trigger, since Ansible's `argocd`
+role owns that Deployment (see Provisioning below), not this chart.
+
 One-time setup outside this repo (redo after provisioning a fresh cluster — the ArgoCD
 token lives in `argocd-secret`, not git, so it does not survive a rebuild, like the sealed
 secrets):
@@ -248,7 +264,11 @@ secrets):
    = Service Auth, Include = that token. No other policy on the app.
 3. From the LAN, once the chart has synced: `argocd login argo.internal --grpc-web` then
    `argocd account generate-token --account github-actions`.
-4. Set GitHub repo secrets `ARGOCD_AUTH_TOKEN`, `CF_ACCESS_CLIENT_ID`,
+4. `kubectl -n argocd rollout restart deploy/argocd-server` — a fresh provision applies
+   upstream `install.yaml` before ArgoCD ever syncs `argocd/` and adds `oidc.config`, so
+   the server always boots pre-OIDC on a new cluster; without this restart, SSO 401s in
+   a loop per the paragraph above.
+5. Set GitHub repo secrets `ARGOCD_AUTH_TOKEN`, `CF_ACCESS_CLIENT_ID`,
    `CF_ACCESS_CLIENT_SECRET`.
 
 ## Storage
