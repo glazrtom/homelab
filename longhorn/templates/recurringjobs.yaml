@@ -43,4 +43,21 @@ spec:
     - protected
   retain: 7
   concurrency: 1
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: system-backup-weekly
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  cron: "0 4 * * 0"
+  task: system-backup
+  retain: 4
+  concurrency: 1
+  # Records Longhorn's own state (settings, RecurringJobs, volume<->backup mapping)
+  # without re-running volume backups the nightly job above already did.
+  parameters:
+    volume-backup-policy: disabled
 {{- end }}

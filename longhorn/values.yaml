@@ -16,8 +16,19 @@ ingress:
   external: true
   auth: true
 
+# Gates the backup-daily/system-backup-weekly RecurringJobs and the BackupTarget CR.
+# Target is Backblaze B2 over Longhorn's S3 backupstore; credentialSecret is sealed
+# via generate-b2-secret.sh (see ansible/roles/secrets). Scope is the `longhorn`
+# StorageClass only (the `protected` RecurringJobSelector group below) - the
+# `longhorn-bulk` class and the static shared-media volume are deliberately excluded.
 backup:
-  enabled: false # gates the backup-daily RecurringJob; no backup target yet
+  enabled: true
+  target:
+    # s3://<bucket>@<region>/ - the region segment is required syntax, the actual
+    # host comes from AWS_ENDPOINTS in the credential secret.
+    url: "s3://glazrtom-homelab-longhorn@eu-central-003/"
+    credentialSecret: longhorn-b2-credentials
+    pollInterval: "300"
 bulkClassName: longhorn-bulk
 
 # --- upstream subchart overrides ------------------------------------------

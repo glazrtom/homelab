@@ -44,3 +44,10 @@ spec:
       kind: Setting
       jsonPointers:
         - /value
+    # Longhorn writes syncRequestedAt into BackupTarget's own spec on every
+    # backupstore poll (every pollInterval seconds) - without this, selfHeal
+    # fights it back to the git value on every poll.
+    - group: longhorn.io
+      kind: BackupTarget
+      jsonPointers:
+        - /spec/syncRequestedAt

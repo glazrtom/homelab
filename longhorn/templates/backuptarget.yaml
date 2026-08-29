@@ -1,0 +1,14 @@
+{{- if .Values.backup.enabled }}
+apiVersion: longhorn.io/v1beta2
+kind: BackupTarget
+metadata:
+  # Longhorn and the StorageClass's backupTargetName both expect this exact name.
+  name: default
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5" # before the RecurringJobs at wave 10
+spec:
+  backupTargetURL: {{ .Values.backup.target.url | quote }}
+  credentialSecret: {{ .Values.backup.target.credentialSecret | quote }}
+  pollInterval: {{ .Values.backup.target.pollInterval | quote }}
+{{- end }}
