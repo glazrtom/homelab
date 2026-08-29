@@ -30,6 +30,8 @@ service:
 ingress:
   external: true
   auth: true
+  annotations:
+    nginx.ingress.kubernetes.io/app-root: /admin/
 
 strategy:
   type: Recreate
