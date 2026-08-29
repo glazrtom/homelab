@@ -15,6 +15,17 @@ ingress:
   external: true
   auth: true
 
+# Browser SSO on top of the forward-auth gate above, via a public/PKCE OIDC client
+# (see authentik/values.yaml argocdOidc). Local admin login stays enabled as
+# break-glass - see CLAUDE.md.
+oidc:
+  enabled: true
+  name: authentik
+  clientId: argocd
+  slug: argocd-oidc
+  authPrefix: auth
+  adminGroup: homelab-admins
+
 ci:
   enabled: true
   domainPrefix: argo-ci

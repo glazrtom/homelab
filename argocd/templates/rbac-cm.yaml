@@ -1,9 +1,12 @@
 {{/*
 Overrides the argocd-rbac-cm upstream install.yaml ships empty. Grants the CI account
 (cm.yaml) read-only access to Applications - enough for the deploy-gate workflow's
-refresh + wait, nothing else. The built-in admin user is unaffected by policy.csv.
+refresh + wait, nothing else - and maps the OIDC admin group (cm.yaml oidc.config) to
+ArgoCD's built-in full-access role. policy.default stays empty, so an SSO user outside
+that group gets no permissions until added here. The built-in admin user is
+unaffected by policy.csv either way.
 */}}
-{{- if .Values.ci.enabled }}
+{{- if or .Values.ci.enabled .Values.oidc.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -15,6 +18,11 @@ metadata:
 data:
   policy.default: ""
   policy.csv: |
+    {{- if .Values.ci.enabled }}
     p, role:ci, applications, get, */*, allow
     g, {{ .Values.ci.account }}, role:ci
+    {{- end }}
+    {{- if .Values.oidc.enabled }}
+    g, {{ .Values.oidc.adminGroup }}, role:admin
+    {{- end }}
 {{- end }}

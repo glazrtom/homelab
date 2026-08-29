@@ -77,8 +77,9 @@ suffixes `global.domain.internal.suffix: internal` and
 `global.domain.public.suffix: glazrtom.cz`, `global.sharedMedia` (name/size of the
 shared Longhorn media volume — see Storage below), `global.ingress.{internal,external}.{className,loadBalancerIP}`
 (the two IngressClass names and their MetalLB LB IPs — see Networking below), and
-`global.authentik.{namespace,outpost.{service,port}}` (the one embedded outpost's
-address, consumed by both the ingress chart's global auth and `lib.authOutpost*`).
+`global.authentik.{namespace,outposts.{external,internal}.{service,port}}` (the two
+proxy outposts' addresses — see Networking below — consumed by both the ingress
+chart's global auth and `lib.authOutpost*`).
 
 Charts that need these values layer them via the ArgoCD `helm.valueFiles` list, e.g.
 `authentik.yaml` and the media ApplicationSet list `../global/values.yaml` first, then
@@ -213,6 +214,23 @@ missing a service-token header pair before it ever reaches nginx or the cluster.
 Authentication into ArgoCD itself is a separate, read-only API token for the `github-actions`
 account (`argocd/templates/cm.yaml` declares it `apiKey`-only — no UI session possible;
 `argocd/templates/rbac-cm.yaml` grants it `get` on `applications` only, nothing else).
+
+`argo.glazrtom.cz`/`argo.internal` are also gated by their own forward-auth (like any
+other `gatedApps` entry), but ArgoCD's login page used to still show its own
+username/password form on top of that. `argocd/values.yaml` `oidc` now gives ArgoCD a
+real Authentik OIDC client (`authentik/values.yaml` `argocdOidc`, rendered in
+`blueprint-access.yaml`): public/PKCE, so no client secret exists to seal. Because the
+authorization flow is `default-provider-authorization-implicit-consent` and the
+browser already holds an Authentik session from forward-auth, the round-trip is
+invisible — one click on "LOG IN VIA AUTHENTIK" and you're in, already authorized via
+the `homelab-admins` → `role:admin` mapping in `argocd-rbac-cm`. ArgoCD accepts only
+one `oidc.config` issuer, so this points at the **public** host
+(`auth.glazrtom.cz`) only; there is no LAN-only variant the way the proxy providers
+have one. The local `admin` account is kept enabled as break-glass: on the LAN it's
+reachable via `argo.internal`'s login form as long as Authentik is up (SSO from there
+would redirect out to the public host and fail), and via
+`kubectl port-forward -n argocd svc/argocd-server 8080:80` if Authentik itself is
+down, since that path depends on nothing but the cluster.
 
 One-time setup outside this repo (redo after provisioning a fresh cluster — the ArgoCD
 token lives in `argocd-secret`, not git, so it does not survive a rebuild, like the sealed

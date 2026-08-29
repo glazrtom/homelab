@@ -76,6 +76,17 @@ gatedApps:
     prefix: sonarr
     group: homelab-personal
 
+# Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
+# `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the
+# client_id below isn't sensitive - no sealed secret needed. Public issuer only:
+# ArgoCD's argocd-cm takes a single oidc.config, so a LAN-only session isn't possible
+# the way it is for the proxy providers.
+argocdOidc:
+  enabled: true
+  clientId: argocd
+  slug: argocd-oidc
+  group: homelab-admins
+
 authentik:
   global:
     # Appended after the chart's own config secret, so these keys win.
