@@ -121,7 +121,8 @@
       "WebFetch(domain:metallb.io)",
       "WebFetch(domain:newreleases.io)",
       "WebFetch(domain:docs.goauthentik.io)",
-      "WebFetch(domain:release-assets.githubusercontent.com)"
+      "WebFetch(domain:release-assets.githubusercontent.com)",
+      "WebFetch(domain:wiki.servarr.com)"
     ],
     "ask": [
       "Bash(kubectl apply*)",
