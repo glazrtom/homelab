@@ -14,7 +14,8 @@ Makefile/Taskfile, and no build step.
 new services must not introduce it. A workload is a local Helm chart plus an ArgoCD
 `Application`; multi-container workloads are pods with sidecars (e.g. prowlarr's gluetun
 VPN sidecar in `media/`), not compose services. The single k3s node is provisioned by
-`ansible/` (see Provisioning below); everything above the node is ArgoCD's.
+`ansible/` — see the `ansible-provisioning` skill for the full playbook order;
+everything above the node is ArgoCD's.
 
 ## Git workflow
 
@@ -40,17 +41,17 @@ between an edit and production.
   the `@claude` GitHub Action loads project settings too, and an `ask` rule there outranks
   the workflow's `--allowedTools` and hard-denies in headless runs.
 
-## Validation (both modes)
+## Validation — mandatory before handing work back
 
 Validate whatever you touched before handing work back (interactive) or opening the PR
-(headless):
+(headless). These are the commands; don't skip them because a task looks trivial — a
+chart that fails to template leaves the Application stuck `OutOfSync` in the cluster, and
+in a headless run nobody templates it before it merges:
 
-- Charts: `helm template <chart>/ -f global/values.yaml -f <chart>/values.yaml` — a chart
-  that fails to template leaves the Application stuck `OutOfSync` in the cluster.
-- Ansible: `cd ansible && ansible-playbook --syntax-check playbooks/<pb>.yml` — the
-  `--syntax-check` flag must come **immediately** after `ansible-playbook`, since that exact
-  prefix is what the `@claude` Action allowlists (a full play run is deliberately not
-  permitted).
+- Charts: `helm template <chart>/ -f global/values.yaml -f <chart>/values.yaml`.
+- Ansible: `cd ansible && ansible-playbook --syntax-check playbooks/<pb>.yml` (see the
+  `ansible-provisioning` skill for why `--syntax-check` must come immediately after
+  `ansible-playbook`).
 - Plain YAML: `yamllint <file>` (chart templates are Go templates and are excluded via
   `.yamllint.yml`).
 
@@ -62,18 +63,15 @@ server is `https://10.0.0.1:6443`, and Claude Code's sandbox appends `10.0.0.0/8
 other RFC1918 ranges) to `NO_PROXY`, so an unprefixed `kubectl` bypasses the sandbox's
 filtering proxy and connects direct, which the sandbox denies at `connect()`. With the
 prefix the request goes through the proxy, where `sandbox.network.allowedDomains`' `10.0.0.1`
-entry admits it. `.claude/settings.json`'s own `env.NO_PROXY` can't fix this — the private
-ranges are appended after it — so the prefix has to be per-command. A cluster command failing
-with `connect: operation not permitted` means the prefix is missing, not a cue to reach for
-`dangerouslyDisableSandbox`; `*.internal` hosts need no prefix (hostnames aren't matched by
-the CIDR entries).
+entry admits it. A cluster command failing with `connect: operation not permitted` means
+the prefix is missing, not a cue to reach for `dangerouslyDisableSandbox`; `*.internal`
+hosts need no prefix (hostnames aren't matched by the CIDR entries).
 
-Keep exploration commands inside the sandbox's built-in read-only set so they don't need
-`dangerouslyDisableSandbox` or a permission prompt: use the scratchpad's literal path rather
-than `$TMPDIR`, avoid `for … do … done` loops and `$(...)` command substitution (which also
-disables prefix permission matching — relevant for the `gh *` family, always unsandboxed per
-`excludedCommands`), prefer parallel `Read`/`Grep`/`Glob` calls over a `cd … ; cat a; cat b`
-chain, and don't combine `cd` with `git` in one command.
+Keep exploration commands inside the sandbox's built-in read-only set: use the
+scratchpad's literal path rather than `$TMPDIR`, avoid `for … do … done` loops and
+`$(...)` command substitution (which also disables prefix permission matching — relevant
+for the `gh *` family, always unsandboxed per `excludedCommands`), and prefer parallel
+`Read`/`Grep`/`Glob` calls over a `cd … ; cat a; cat b` chain.
 
 ## How deployment works
 
@@ -81,8 +79,9 @@ chain, and don't combine `cd` with `git` in one command.
   (cluster infra: reflector, MetalLB, ingress, ArgoCD self-config, Cloudflare) or `applications/apps/`
   (workloads: Plex, Pi-hole, media, Authentik, …). Two app-of-apps Applications —
   `applications/core.yaml` and `applications/apps.yaml` — point at those two directories
-  and are applied by the Ansible playbooks (see Provisioning below); everything under
-  them is then GitOps-synced automatically, no manual `kubectl apply` needed.
+  and are applied by the Ansible playbooks (see the `ansible-provisioning` skill);
+  everything under them is then GitOps-synced automatically, no manual `kubectl apply`
+  needed.
 - Each `Application` points at a per-service directory (`plex/`, `pihole/`, etc.) that
   is a self-contained local Helm chart (`Chart.yaml`, `values.yaml`, `templates/`).
 - `media/` is different: `media/application/Application.yaml` is an **ApplicationSet**
@@ -96,385 +95,78 @@ chain, and don't combine `cd` with `git` in one command.
 `global.user` (uid/gid 1001), `global.timezone` (Europe/Prague), the domain
 suffixes `global.domain.internal.suffix: internal` and
 `global.domain.public.suffix: glazrtom.cz`, `global.sharedMedia` (name/size of the
-shared Longhorn media volume — see Storage below), `global.ingress.{internal,external}.{className,loadBalancerIP}`
-(the two IngressClass names and their MetalLB LB IPs — see Networking below), and
-`global.authentik.{namespace,outposts.{external,internal}.{service,port}}` (the two
-proxy outposts' addresses — see Networking below — consumed by both the ingress
-chart's global auth and `lib.authOutpost*`).
+shared Longhorn media volume — see the `longhorn-config` skill), `global.ingress.{internal,external}.{className,loadBalancerIP}`
+(the two IngressClass names and their MetalLB LB IPs — see the `authentik-ingress` skill),
+and `global.authentik.{namespace,outposts.{external,internal}.{service,port}}` (the two
+proxy outposts' addresses — see the `authentik-ingress` skill — consumed by both the
+ingress chart's global auth and `lib.authOutpost*`).
 
 Charts that need these values layer them via the ArgoCD `helm.valueFiles` list, e.g.
 `authentik.yaml` and the media ApplicationSet list `../global/values.yaml` first, then
-`values.yaml`, then any per-instance file. When adding a chart that references
+`values.yaml`, then any per-instance file. **When adding a chart that references
 `.Values.global.*`, you must add `../global/values.yaml` to its Application's
-`valueFiles` or the sync will fail to template.
+`valueFiles` or the sync will fail to template.**
 
-## Networking: dual ingress + global auth
+## Hard invariants
 
-Two `ingress-nginx` controllers run with separate IngressClasses, one per key under
-`global.ingress` (`internal`/`external`). The `ingress/` chart renders one k3s-native
-`helm.cattle.io/v1` `HelmChart` CR per controller (`ingress/templates/helmchart.yaml`);
-controller-level config (forwarded headers, real-IP recovery, the Cloudflare scheme map,
-global auth) lives in `ingress/templates/_config.tpl`. `lib.ingress` renders **two**
-Ingress objects for any chart that uses it (see `lib/templates/_ingress.tpl`; plex and
-calibre are hand-written exceptions):
+These are destructive or wrong-by-default if missed, so they stay here rather than in a
+skill that might not fire:
 
-- Internal: `ingressClassName: nginx-internal`, host `<prefix>.internal`.
-- External: `ingressClassName: nginx-external`, host `<prefix>.<global.domain.public.suffix>`.
+- Both ingress classes are deny-by-default. A chart rendering `lib.ingress` **must** set
+  `ingress.auth` (`true` or `false` — there is no third option, the template `fail`s
+  without it), and `auth: true` additionally requires a `gatedApps` entry in
+  `authentik/values.yaml` **and** `lib.authOutpost` rendered in the chart. Full detail,
+  including the outpost architecture and OIDC clients: **`authentik-ingress` skill**.
+- Every PV/PVC carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false`, so
+  neither a prune nor deleting the owning Application removes data — but a deleted-and-
+  recreated config PVC comes back **empty**, since Longhorn keys the volume off the PVC's
+  UID. Full detail, including recovery and backup constraints: **`longhorn-config`
+  skill**.
+- **Never rename a `media/application/Application.yaml` (or any ApplicationSet) generator
+  element in place.** ArgoCD deletes the Application for the old name and creates a new
+  one for the new name; the delete cascades into every resource that Application owned.
+  This has happened once already and deleted prowlarr's config PVC. If a rename is
+  genuinely needed, set `spec.syncPolicy.preserveResourcesOnDeletion: true` on the
+  ApplicationSet first, push that, then rename.
+- **Never commit:** anything out of a `secrets/` dir (only `kubeseal` output —
+  `sealed-*.yaml`, `*-sealed.yaml` — is committable); kubeconfigs; the Cloudflare tunnel
+  token/credentials, GHCR PAT, Windscribe credentials, or Authentik keys in any un-sealed
+  form; `.env` files or literal values inlined into a chart's `values.yaml`; Longhorn/PVC
+  data dumps or backups. If plaintext does get committed, the value is burned — rotate it
+  at the source and reseal. Full detail on the sealing mechanism: **`secrets` skill**.
 
-Path from the internet: **Cloudflare Tunnel (`cloudflare/`) → nginx-external → service.**
-**Both classes are deny-by-default.** `authentik/values.yaml` `gatedApps` is the single
-registry of gated hosts and the group allowed in; the blueprint
-(`authentik/templates/blueprint-access.yaml`) generates **two** `forward_single` proxy
-providers per entry — one for the public host, one for `<prefix>.internal` — so one
-registry entry gates both classes at once. A host missing from `gatedApps` matches no
-application, and the class's own `global-auth-url` (`ingress.internalConfig` /
-`ingress.externalConfig` in `ingress/templates/_config.tpl`) turns that into a 403.
+## Adding a new service (checklist)
 
-A chart sets exactly one of two states via `ingress.auth` — there is no third, implicit
-one, and `lib.ingress` `fail`s the template if the key is missing:
+The repo's most common non-trivial task, spanning several of the skills above:
 
-| | `ingress.auth: true` | `ingress.auth: false` |
-|---|---|---|
-| both classes | gated via that class's own outpost | `enable-global-auth: "false"` |
+1. New directory with a self-contained Helm chart (`Chart.yaml`, `values.yaml`,
+   `templates/`) — copy an existing similar chart.
+2. New `applications/apps/<svc>.yaml` Application CR (`applications/core/` instead for
+   cluster infra, not a workload) — copy an existing one; keep `repoURL`/
+   `targetRevision: HEAD`/automated sync.
+3. If the chart references `.Values.global.*`, add `../global/values.yaml` to that
+   Application's `helm.valueFiles`.
+4. Set `ingress.auth` on any `lib.ingress` usage. If `true`: add a `gatedApps` entry
+   (`authentik/values.yaml`) and render `lib.authOutpost` in the chart — see
+   `authentik-ingress`.
+5. If the service needs credentials, add a `generate-*-secret.sh` following the existing
+   pattern and seal via `scripts/seal.sh` — see `secrets`.
+6. Reference domains through `global.domain.*`, never hardcoded hostnames.
+7. `helm template <chart>/ -f global/values.yaml -f <chart>/values.yaml` before handing
+   back (see Validation above).
 
-`auth: true` also needs `lib.authOutpost` rendered in the chart (a
-`service-authentik-outpost.yaml` template with `{{ include "lib.authOutpost" . }}`), which
-creates the in-namespace `ExternalName` alias(es) and the `authentik-auth-headers`
-ConfigMap the Ingress-level annotations reference; add a matching `gatedApps` entry too.
-Hosts that must not be gated at all (plex, calibre, Authentik itself) set `auth: false`.
-These objects are namespace singletons keyed by fixed names — if several charts sharing
-one namespace are split across multiple ArgoCD Applications (e.g. `media/`'s
-per-instance Applications), only one of them may render `lib.authOutpost`/
-`lib.authOutpostObjects`, or ArgoCD reports SharedResource/RepeatedResource warnings and
-none of them reach `Synced`; see `media/templates/authentik-outpost.yaml` for the
-pattern (the `media-global` instance owns them, gated by its own values flag).
+Keep comments to the minimum necessary elsewhere in the repo too — prefer
+self-explanatory names; comment only non-obvious intent.
 
-There are **two proxy outposts**, keyed the same way as `global.ingress`:
-`global.authentik.outposts.{external,internal}`. The embedded (`external`) outpost's
-`authentik_host` is hardcoded to the public host — for the embedded outpost,
-`authentik_host_browser` has no effect, so browser redirects would leave the LAN if it
-also served internal hosts. The `internal` outpost is a second, non-embedded, deployed
-outpost (via the existing `sc-local` service connection) carrying only the `-internal`
-providers, with `authentik_host` pointed at Authentik's in-cluster Service (`auth.internal`
-resolves via Pi-hole, not cluster DNS) and `authentik_host_browser` at `auth.internal` — so
-LAN logins never hairpin out through Cloudflare.
+## Skills for domain detail
 
-Native (non-browser) clients that can't follow an SSO redirect (Jellyfin's TV/mobile apps)
-don't need an ungated host as an escape hatch: a `gatedApps` entry's `skipPathRegex`
-excludes the client's own auth/API paths from the forward-auth check while the rest of the
-host stays gated — see the `jellyfin` entry in `authentik/values.yaml`.
-
-Forward-auth's headers (`X-authentik-*`) stop at nginx — Jellyfin itself never reads
-them, so being forward-auth'd doesn't log a browser into Jellyfin. Browser SSO for
-Jellyfin instead runs over two separate `authentik_providers_oauth2.oauth2provider`s
-(`provider-jellyfin-oidc` / `provider-jellyfin-oidc-internal` in
-`blueprint-access.yaml`), consumed by a community OIDC plugin installed by hand in the
-Jellyfin UI (config lives in its PVC, like the LDAP plugin's). Because implicit-consent
-is used, completing that OIDC round-trip is invisible when a browser already holds an
-authentik session from forward-auth — so the two mechanisms compose into single
-sign-on without either depending on the other. Split public/internal for the same
-reason the proxy providers are: `auth.internal` and `auth.glazrtom.cz` don't share a
-session cookie, and the plugin picks one fixed issuer host per provider config with no
-per-request switching, so each host needs its own client and callback path to stay
-invisible and to keep LAN logins off Cloudflare. This doesn't help native clients,
-which still need the `skipPathRegex` carve-out above.
-
-Routing ungated hosts *through* the outpost (a provider with `skip_path_regex: .*`) was
-considered and rejected: nginx `auth_request` treats any non-2xx/401/403 as an error and
-returns **500**, and the outpost is what evaluates the skip regex — so a `.*` host still
-hard-depends on the Authentik pod. Every Authentik restart would take the *unauthenticated*
-apps down, in exchange for no security gain.
-
-`nginx-external` also maps Cloudflare's `CF-Visitor` header to a real scheme, rewrites
-`X-Forwarded-Proto/Host`, and recovers the real client IP from `CF-Connecting-IP` (needed
-for `ingress.rateLimit`, below, to key on the actual visitor rather than the shared
-`cloudflared` pod IP). The manual Cloudflare-side layer — one rate-limiting rule, up to
-five custom rules (geo/ASN/UA blocking), Bot Fight Mode — isn't expressible in
-`cloudflare/templates/configMap.yaml`'s single `*.glazrtom.cz` catch-all and has to be set
-in the Cloudflare dashboard directly.
-
-`ingress.rateLimit` (external Ingress only — the LAN isn't this threat model) sets
-`limit-rps`/`limit-connections`/`limit-burst-multiplier`. An ungated external host
-(`auth: false`) gets a conservative default when `rateLimit` is left unset;
-`rateLimit: false` disables it outright (needed for Authentik's own host, whose login flow
-serves every gated app's assets and would break under a low cap); setting `rateLimit`
-alongside `auth: true` is a template error — a gated host doesn't need the extra layer.
-
-Authentik (SSO/IdP) is deployed from `authentik/` (official upstream chart, with a
-bundled postgres, refactored onto the `lib/` templates like the other apps). Its
-declarative config (`gatedApps`, providers, outposts, the LDAP bind account, Jellyfin's
-OIDC clients) lives in one blueprint, rendered into the `authentik-blueprints` ConfigMap
-by `authentik/templates/blueprint-access.yaml` and applied by
-`authentik/templates/job-blueprint-apply.yaml`, an ArgoCD `PostSync` hook Job that runs
-`Importer.apply()` (via `ak shell -c`, not the `ak apply_blueprint` management command —
-that command also runs a full `Importer.validate()` dry-run first, roughly doubling
-runtime for no benefit here) against the just-synced ConfigMap. This makes a `gatedApps`
-edit live as soon as the sync's hooks finish, instead of waiting on the worker's own
-hourly blueprint discovery; it also means a blueprint that fails to apply (bad model,
-unresolvable `!Find`, wrong `!KeyOf` order) fails the Job — and, because the Job's exit
-code is checked, the sync operation itself — rather than silently no-opping inside the
-worker. The Job's image tag tracks the `authentik` subchart pin in `authentik/Chart.yaml`,
-so bumping that dependency carries the Job along with it.
-
-## Deploy verification (CI)
-
-`.github/workflows/deploy.yml` runs on every push to `master`: it hard-refreshes the
-`core`/`apps` app-of-apps Applications plus every child Application (via
-`scripts/argocd-wait.sh`) so ArgoCD picks the commit up immediately instead of waiting out
-its poll interval, then blocks until each is `Synced`/`Healthy` at that commit **and** its
-sync operation has left `Running`/`Terminating` — `app_ok()` checks
-`.status.operationState.phase` alongside sync/health, since ArgoCD marks an app
-`Synced`/`Healthy` as soon as resources reconcile, before any `PostSync` hook (e.g.
-authentik's blueprint-apply Job, see Networking above) has finished. Without that check a
-push could go green minutes before a `gatedApps`/OIDC-provider edit actually took effect.
-This is the only automated signal that a push actually deployed cleanly — there is no
-other CI in this repo. `ARGOCD_WAIT_TIMEOUT` is raised to 900s (workflow `timeout-minutes:
-20`) to give the blueprint-apply Job room to run.
-
-It talks to ArgoCD over a dedicated, ungated host, `argo-ci.glazrtom.cz`
-(`argocd/templates/ingress-ci.yaml`, `argocd.ci` in `argocd/values.yaml`) —
-`argo.glazrtom.cz`/`argo.internal` stay gated by Authentik as normal, and `argo-ci` is
-deliberately **not** registered in `authentik/values.yaml` `gatedApps`. It is not open to
-the internet: **Cloudflare Access** sits in front of the tunnel and 403s any request
-missing a service-token header pair before it ever reaches nginx or the cluster.
-Authentication into ArgoCD itself is a separate, read-only API token for the `github-actions`
-account (`argocd/templates/cm.yaml` declares it `apiKey`-only — no UI session possible;
-`argocd/templates/rbac-cm.yaml` grants it `get` on `applications` only, nothing else).
-
-`argo.glazrtom.cz`/`argo.internal` are also gated by their own forward-auth (like any
-other `gatedApps` entry), but ArgoCD's login page used to still show its own
-username/password form on top of that. `argocd/values.yaml` `oidc` now gives ArgoCD a
-real Authentik OIDC client (`authentik/values.yaml` `argocdOidc`, rendered in
-`blueprint-access.yaml`): public/PKCE, so no client secret exists to seal. Because the
-authorization flow is `default-provider-authorization-implicit-consent` and the
-browser already holds an Authentik session from forward-auth, the round-trip is
-invisible — one click on "LOG IN VIA AUTHENTIK" and you're in, already authorized via
-the `homelab-admins` → `role:admin` mapping in `argocd-rbac-cm`. ArgoCD accepts only
-one `oidc.config` issuer, so this points at the **public** host
-(`auth.glazrtom.cz`) only; there is no LAN-only variant the way the proxy providers
-have one. The local `admin` account is kept enabled as break-glass: on the LAN it's
-reachable via `argo.internal`'s login form as long as Authentik is up (SSO from there
-would redirect out to the public host and fail), and via
-`kubectl port-forward -n argocd svc/argocd-server 8080:80` if Authentik itself is
-down, since that path depends on nothing but the cluster.
-
-`argocd-server` caches its OIDC TLS client config once, at `SessionManager`
-construction — it does not pick up a change to `oidc.config` in a running process. A
-server that booted before `oidc.config` first existed (or before it changes ever again)
-keeps using the pre-OIDC fallback, a certificate pool containing only ArgoCD's own
-self-signed cert, so it rejects Authentik's real (Cloudflare-issued) certificate on
-every session-token verification: login succeeds but every following API call 401s and
-you're bounced straight back to the login page. **A `kubectl -n argocd rollout restart
-deploy/argocd-server` is required any time `oidc.config` is added or changed** — this
-is a live-cluster action, not something the chart can trigger, since Ansible's `argocd`
-role owns that Deployment (see Provisioning below), not this chart.
-
-One-time setup outside this repo (redo after provisioning a fresh cluster — the ArgoCD
-token lives in `argocd-secret`, not git, so it does not survive a rebuild, like the sealed
-secrets):
-
-1. Cloudflare Zero Trust → Access → Service Auth → create a service token; record the
-   Client ID/Secret (shown once).
-2. Access → Applications → Add → Self-hosted, domain `argo-ci.glazrtom.cz`; policy Action
-   = Service Auth, Include = that token. No other policy on the app.
-3. From the LAN, once the chart has synced: `argocd login argo.internal --grpc-web` then
-   `argocd account generate-token --account github-actions`.
-4. `kubectl -n argocd rollout restart deploy/argocd-server` — a fresh provision applies
-   upstream `install.yaml` before ArgoCD ever syncs `argocd/` and adds `oidc.config`, so
-   the server always boots pre-OIDC on a new cluster; without this restart, SSO 401s in
-   a loop per the paragraph above.
-5. Set GitHub repo secrets `ARGOCD_AUTH_TOKEN`, `CF_ACCESS_CLIENT_ID`,
-   `CF_ACCESS_CLIENT_SECRET`.
-
-## Storage
-
-Bulk media and per-app config both live on **Longhorn** (cluster-default StorageClass
-`longhorn`, plus `longhorn-bulk` for statically-bound volumes — see `longhorn/`). The
-media library is one Longhorn **RWX** volume (`longhorn/templates/volume-shared-media.yaml`,
-sized via `global.sharedMedia`), genuinely shared across the `media`, `transmission` and
-`plex` namespaces: each namespace has its own static `PersistentVolume` pointing at the
-same `csi.volumeHandle`, bound to that namespace's own PVC via `claimRef`. Config volumes
-are plain dynamically-provisioned `longhorn` PVCs, one per app, following the
-`pihole/templates/pvc-config.yaml` pattern. Resizing the shared volume is a two-line change
-in `global/values.yaml` (`size` and `sizeBytes`, kept in sync); resizing a config PVC is a
-one-line change to that app's `volume.config.size`. There is no host-path storage left in
-any chart.
-
-**Backups** go from Longhorn to Backblaze B2 over the S3 backupstore
-(`longhorn/templates/backuptarget.yaml`, gated by `backup.enabled`), scoped to the
-`longhorn` StorageClass only. `persistence.recurringJobSelector` stamps every volume
-that class provisions into the `protected` RecurringJobSelector group
-(`longhorn/values.yaml`), which `longhorn/templates/recurringjobs.yaml`'s
-`backup-daily`/`system-backup-weekly` jobs target; `longhorn-bulk` and the static
-`shared-media` volume set no selector, so bulk media is never uploaded. Credentials
-are sealed via `longhorn/generate-b2-secret.sh`, following the same pattern as the
-other `generate-*-secret.sh` scripts below. Two things not to change without
-re-reading why:
-
-- **No S3 Object Lock on the backupstore bucket.** Longhorn's backupstore is not
-  append-only - it rewrites `volume.cfg` on every backup and deletes/garbage-collects
-  blocks to enforce each RecurringJob's `retain` count. A default Object Lock
-  retention period (compliance *or* governance mode - Longhorn's driver never sends
-  `x-amz-bypass-governance-retention`) makes both operations fail. Use B2's SSE-B2
-  bucket-level encryption instead; there is no backup-level encryption in Longhorn
-  itself.
-- **No age-based B2 lifecycle rule on current objects** (`daysFromUploadingToHiding`
-  must stay unset). Longhorn owns retention via each RecurringJob's `retain` count;
-  a B2-side age rule would delete blocks a newer incremental backup still
-  references and silently corrupt the chain. `daysFromHidingToDeleting` (aging out
-  versions Longhorn has already deleted) is safe and gives an undelete window.
-
-Also note `backupBlockSize` is immutable per volume (fixed at creation), so changing
-`longhorn.defaultSettings.defaultBackupBlockSize` only affects volumes created
-afterward, never retroactively resizing existing ones.
-
-Every rendered PV/PVC carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
-(`lib.pvc` in `lib/templates/_pvc.tpl` for config volumes; each shared-media/calibre chart's
-hand-written `pvc-*.yaml` for the rest). This means neither an ordinary prune nor deleting the
-owning Application (e.g. renaming an ApplicationSet generator element — see Provisioning
-pitfalls below) can remove a data volume; retiring one for real is a manual two-step:
-`kubectl delete pvc`, then delete the now-`Released` PV and its Longhorn volume. Config PVCs
-are dynamically provisioned (Longhorn keys the volume off the PVC's UID), so a PVC that does
-get deleted and recreated comes back **empty** even with the same name — recovering the data
-means binding a temporary PVC to the orphaned (`Retain`ed) PV and copying it across, since it
-does not rejoin automatically like the static shared-media volumes do.
-
-## Provisioning pitfalls
-
-**Never rename a `media/application/Application.yaml` (or any ApplicationSet) generator
-element in place.** ArgoCD deletes the Application for the old name and creates a new one for
-the new name; the delete cascades into every resource that Application owned. This has
-happened once already and deleted prowlarr's config PVC. If a rename is genuinely needed, set
-`spec.syncPolicy.preserveResourcesOnDeletion: true` on the ApplicationSet first, push that,
-then rename.
-
-## Secrets
-
-**Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
-secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`,
-`base/windscribe-sealed.yaml`). Each service's `generate-*-secret.sh` (in `authentik/`,
-`base/`, `cloudflare/`) is **idempotent**: it reuses the plaintext
-already sitting in its git-ignored `secrets/` dir if present, only generating (random
-values) or prompting (human-supplied values, e.g. the GHCR PAT or Windscribe creds) when
-that plaintext is missing, then calls `scripts/seal.sh` (shared helper) to reseal via
-`kubeseal`. Resealing is itself skipped unless the plaintext hash changed or the committed
-sealed file no longer validates against the live controller — `kubeseal`'s output is
-non-deterministic (fresh random session key/padding per run), so an unconditional reseal
-would show as a git diff on every run even with nothing to change. Sealed secrets are
-encrypted against one specific cluster's key, so re-run these after provisioning a new
-cluster — `ansible/roles/secrets` does this automatically (see Provisioning below).
-Plaintext lives in per-chart `secrets/` dirs, git-ignored via the root `.gitignore`'s
-`/*/secrets/` (top-level charts only — a `secrets/` dir nested deeper is **not** covered,
-so keep plaintext at `<chart>/secrets/`). Some bootstrap secrets (TLS, Tailscale) are
-instead created imperatively — see `init.sh`.
-
-### Never commit
-
-- Anything out of a `secrets/` dir — the plaintext `Secret` manifests the generate scripts
-  read and write. Only the `kubeseal` output (`sealed-*.yaml`, `*-sealed.yaml`) is
-  committable.
-- Kubeconfigs. `ansible/roles/kubeconfig` fetches the cluster kubeconfig to `~/.kube/config`
-  on the control node; it carries admin client certs and belongs nowhere in this repo.
-- The Cloudflare tunnel token/credentials JSON, the GHCR PAT, Windscribe credentials, and
-  the Authentik keys (Postgres password, Django secret key, akadmin bootstrap
-  password/token, LDAP bind key, OIDC client secrets) in any un-sealed form.
-- `.env` files or literal values pasted inline into a chart's `values.yaml` — charts
-  reference secrets by name (`windscribe-auth`, `authentik-secrets`, …); they never inline
-  them.
-- Longhorn/PVC data dumps or backups.
-
-If plaintext does get committed, the value is burned: rotate it at the source, re-run that
-app's `generate-*.sh`, and commit the new sealed file — rewriting history alone is not
-enough.
-
-`authentik/generate-secret.sh` owns a single `authentik-secrets` secret carrying every
-key the chart needs (Postgres password, Django secret key, akadmin bootstrap
-password/token/email, LDAP bind key, Jellyfin OIDC client id/secrets). Each key
-backfills independently — existing values are read back out of the git-ignored
-plaintext and only missing keys are freshly generated — so adding a new key later
-never re-rolls an existing one. None of these are safe to regenerate on a running
-install: Postgres password / Django secret key break authentik <-> postgres auth
-immediately, and the rest are pinned into the LDAP outpost provider or Jellyfin's
-PVC-stored plugin config.
-
-`base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
-(emberstack), which mirrors it into other namespaces. `base/generate-windscribe-secret.sh`
-does the same for the `windscribe-auth` VPN credential (namespace `default`), mirroring it
-into `media` (prowlarr's gluetun sidecar) and `transmission` — neither of those charts owns
-the secret itself, they only reference `windscribe-auth` by name.
-
-## Bootstrap
-
-`init.sh` is a **template, not a runnable script** (it exits immediately). It predates
-`ansible/` below and documents the original, fully manual one-time cluster setup order.
-It's kept only as historical reference — use the Ansible playbooks for actually
-provisioning a host now.
-
-## Provisioning (Ansible)
-
-`ansible/` provisions a host in two stages, each its own playbook, each component its
-own role. `ansible.cfg` sets the inventory, so `-i` is never needed:
-
-```
-cd ~/projects/homelab/ansible
-ansible-galaxy collection install -r requirements.yml --upgrade   # first time / fresh host
-ansible-playbook playbooks/cluster.yml -K   # stage 1: host + k3s + cluster foundation
-ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
-```
-
-- **`playbooks/cluster.yml`** (the "one command" for a fresh host) runs, in order:
-  `server_base` (hostname + dedicated `server` user/group at uid/gid 1001, login user
-  joins the group) → `k3s` (installs k3s only, `--disable traefik --disable servicelb`)
-  → `kubeconfig` (fetches the cluster kubeconfig to the **control node**, `~/.kube/config`,
-  rewriting the API server IP — every later role in this playbook talks to the cluster
-  from here on) → `helm` (helm + helm-diff) → `argocd` (namespace + upstream
-  `install.yaml`) → `sealed_secrets` (installs the Sealed Secrets controller via Helm
-  into `kube-system`) → `cloudflare` (installs/logs in `cloudflared` if needed, creates the
-  tunnel and its wildcard DNS route if missing, then runs `cloudflare/generate-secret.sh` —
-  the same `scripts/seal.sh` hash-gated reseal used by the other secrets — and prompts
-  before commit/push; any declined or failed step just skips the rest of the role rather than
-  failing the play) → `argocd_apps` (applies `applications/core.yaml`). From there ArgoCD deploys reflector,
-  MetalLB, ingress, its own self-config, and Cloudflare (see sync-wave annotations in
-  `applications/core/*.yaml`).
-- **`playbooks/apps.yml`** (stage 2) runs `secrets` (always resealing — see below) →
-  `argocd_apps` (applies `applications/apps.yaml`; ArgoCD then deploys every workload
-  under `applications/apps/`).
-- The `secrets` role always runs, looping over the generate scripts of every app in its
-  `secrets_items` list (`authentik/`, `base/` — GHCR and Windscribe).
-  It only prompts for a script's human-supplied values when that script has no local
-  plaintext yet; if the plaintext is already there, it's assumed correct and just
-  resealed as-is, no prompt (leave a prompt blank to skip that one and keep its
-  committed sealed file instead). It then commits and pushes just the sealed files that
-  changed. Run it standalone via `playbooks/secrets.yml`, which also runs `cloudflare`
-  first, without redeploying anything.
-- Because `helm`/`sealed_secrets`/`argocd`/`cloudflare`/`argocd_apps`/`secrets` run on
-  the **control node** (not the server) against the fetched kubeconfig, that machine
-  needs `kubectl`, `helm`, `kubeseal`, and `git` (with push access to this repo)
-  available; `cloudflared` is optional — the `cloudflare` role installs it itself (via
-  `brew`/`apt-get`) if missing and prompted for, and warns-and-skips (never fails the
-  play) if it can't get a working, logged-in `cloudflared`.
-- `playbooks/storage.yml` (mount a disk at `/mnt/storage`) is situational — run
-  individually, on demand.
-- Prompt-bearing roles/playbooks (`storage`, `secrets`, and the `cloudflare` role's
-  install/login/commit/push prompts) no-op or fall back sensibly when left blank — see
-  each role/playbook for specifics.
-- Tunables live in each role's `defaults/main.yml`. `kubeconfig_path` (the local,
-  control-node kubeconfig used from `kubeconfig` onward) and `path_home` are shared via
-  `group_vars/all.yml`.
-- Provisions as the existing `glazrtom` user against the `[server]` host in `inventory.ini`
-  — no separate bootstrap inventory.
-- This tree was moved here from the `dotfiles` repo, which now only provisions desktop
-  workstations.
-
-## Conventions when adding/editing services
-
-- New service = new directory with a Helm chart + a new `applications/apps/<svc>.yaml`
-  Application CR (copy an existing one; keep `repoURL`/`targetRevision: HEAD`/automated
-  sync). Cluster-infra components (not workloads) go in `applications/core/` instead.
-- Reference domains through `global.domain.*`, not hardcoded hostnames.
-- A new chart rendering `lib.ingress` must set `ingress.auth` — `true` (gated; add a
-  `gatedApps` entry in `authentik/values.yaml` and render `lib.authOutpost` in the chart)
-  or `false` (deliberately open on both classes). There is no third option; the template
-  enforces it.
-- Keep comments to the minimum necessary — prefer self-explanatory names; comment only
-  non-obvious intent.
+- **`authentik-ingress`** — both ingress classes, `gatedApps`, outposts, OIDC clients
+  (Jellyfin, ArgoCD), the LDAP bind account, the blueprint and its apply Job.
+- **`longhorn-config`** — resizing, volume retirement/recovery, the B2 backup target and
+  its constraints. For a live-state usage/backup-health *report* instead of a config
+  change, use `disk-report`.
+- **`secrets`** — Sealed Secrets mechanics, each `generate-*-secret.sh`, rotation.
+- **`ansible-provisioning`** — the two-stage playbook order, roles, provisioning a fresh
+  host.
+- **`argocd-ops`** — deploy-workflow failures, `argo-ci` access setup, the
+  `argocd-server` OIDC-restart caveat. Not for routine deploy-status checks.

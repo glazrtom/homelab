@@ -1,6 +1,6 @@
 ---
 name: disk-report
-description: This skill should be used when the user asks for a disk usage report, storage report, or wants to know how full the cluster's volumes are, how much space snapshots are consuming over the real data size, whether Longhorn backups are healthy/succeeding, or general Longhorn/storage health. Triggers on phrases like "disk usage", "storage report", "how full are the volumes", "snapshot overhead", "are backups working", "check backups", "Longhorn health", "/disk-report".
+description: This skill should be used when the user wants a point-in-time READ of current Longhorn state — a disk usage report, storage report, how full the cluster's volumes are right now, how much space snapshots are consuming over the real data size, or whether Longhorn backups are currently healthy/succeeding/recent enough. Triggers on phrases like "disk usage", "storage report", "how full are the volumes", "snapshot overhead", "are backups working", "check backups", "/disk-report". For CHANGING storage configuration (resizing a volume, editing PV/PVC manifests, setting up the backup target or retention policy) use the longhorn-config skill instead — this skill only reads and reports, it never modifies anything.
 ---
 
 # Disk usage report
