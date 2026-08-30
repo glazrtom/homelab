@@ -29,7 +29,7 @@ app: {{ include "lib.fullname" . }}
 {{- (.Values.service | default dict).port | default .Values.app.port -}}
 {{- end -}}
 
-{{/* linuxserver images use PUID/PGID; plex wants PLEX_UID/PLEX_GID. */}}
+{{/* linuxserver images use PUID/PGID; a chart can override via app.uidEnv/gidEnv (see pihole's PIHOLE_UID/PIHOLE_GID). */}}
 {{- define "lib.userEnv" -}}
 - name: {{ .Values.app.uidEnv | default "PUID" }}
   value: {{ .Values.global.user.uid | quote }}

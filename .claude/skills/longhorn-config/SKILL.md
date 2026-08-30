@@ -8,8 +8,8 @@ description: This skill should be used when changing Longhorn storage *configura
 Bulk media and per-app config both live on **Longhorn** (cluster-default StorageClass
 `longhorn`, plus `longhorn-bulk` for statically-bound volumes — see `longhorn/`). The
 media library is one Longhorn **RWX** volume (`longhorn/templates/volume-shared-media.yaml`,
-sized via `global.sharedMedia`), genuinely shared across the `media`, `transmission` and
-`plex` namespaces: each namespace has its own static `PersistentVolume` pointing at the
+sized via `global.sharedMedia`), genuinely shared across the `media`, `jellyfin` and
+`transmission` namespaces: each namespace has its own static `PersistentVolume` pointing at the
 same `csi.volumeHandle`, bound to that namespace's own PVC via `claimRef`. Config volumes
 are plain dynamically-provisioned `longhorn` PVCs, one per app, following the
 `pihole/templates/pvc-config.yaml` pattern. Resizing the shared volume is a two-line change

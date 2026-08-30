@@ -10,8 +10,8 @@ Two `ingress-nginx` controllers run with separate IngressClasses, one per key un
 `helm.cattle.io/v1` `HelmChart` CR per controller (`ingress/templates/helmchart.yaml`);
 controller-level config (forwarded headers, real-IP recovery, the Cloudflare scheme map,
 global auth) lives in `ingress/templates/_config.tpl`. `lib.ingress` renders **two**
-Ingress objects for any chart that uses it (see `lib/templates/_ingress.tpl`; plex and
-calibre are hand-written exceptions):
+Ingress objects for any chart that uses it (see `lib/templates/_ingress.tpl`; calibre is
+a hand-written exception):
 
 - Internal: `ingressClassName: nginx-internal`, host `<prefix>.internal`.
 - External: `ingressClassName: nginx-external`, host `<prefix>.<global.domain.public.suffix>`.
@@ -38,7 +38,7 @@ one, and `lib.ingress` `fail`s the template if the key is missing:
 `service-authentik-outpost.yaml` template with `{{ include "lib.authOutpost" . }}`), which
 creates the in-namespace `ExternalName` alias(es) and the `authentik-auth-headers`
 ConfigMap the Ingress-level annotations reference; add a matching `gatedApps` entry too.
-Hosts that must not be gated at all (plex, calibre, Authentik itself) set `auth: false`.
+Hosts that must not be gated at all (calibre, Authentik itself) set `auth: false`.
 These objects are namespace singletons keyed by fixed names — if several charts sharing
 one namespace are split across multiple ArgoCD Applications (e.g. `media/`'s
 per-instance Applications), only one of them may render `lib.authOutpost`/

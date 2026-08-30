@@ -33,7 +33,7 @@ ldapGroup: homelab-users
 #
 # There is deliberately no catch-all provider. A host missing from this list, or
 # renamed without updating it, matches nothing and the outpost denies it. Hosts that
-# must not be gated at all (plex, calibre, authentik itself) opt out explicitly with
+# must not be gated at all (calibre, authentik itself) opt out explicitly with
 # ingress.auth: false.
 gatedApps:
   - slug: jellyfin

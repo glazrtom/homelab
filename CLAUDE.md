@@ -77,12 +77,12 @@ for the `gh *` family, always unsandboxed per `excludedCommands`), and prefer pa
 
 - Each service is registered as an ArgoCD `Application` CR under `applications/core/`
   (cluster infra: reflector, MetalLB, ingress, ArgoCD self-config, Cloudflare) or `applications/apps/`
-  (workloads: Plex, Pi-hole, media, Authentik, …). Two app-of-apps Applications —
+  (workloads: Jellyfin, Pi-hole, media, Authentik, …). Two app-of-apps Applications —
   `applications/core.yaml` and `applications/apps.yaml` — point at those two directories
   and are applied by the Ansible playbooks (see the `ansible-provisioning` skill);
   everything under them is then GitOps-synced automatically, no manual `kubectl apply`
   needed.
-- Each `Application` points at a per-service directory (`plex/`, `pihole/`, etc.) that
+- Each `Application` points at a per-service directory (`jellyfin/`, `pihole/`, etc.) that
   is a self-contained local Helm chart (`Chart.yaml`, `values.yaml`, `templates/`).
 - `media/` is different: `media/application/Application.yaml` is an **ApplicationSet**
   with a list generator that instantiates the same `media/` chart multiple times

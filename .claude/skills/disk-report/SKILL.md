@@ -49,7 +49,7 @@ the user asks for different sensitivity, e.g. `WARN_PCT=60 bash .../render.sh <f
 ## Notes
 
 - The shared `shared-media` Longhorn volume is mounted via a separate PV/PVC in each
-  of `media`, `jellyfin`, `transmission`, and `plex` (see CLAUDE.md's Storage section).
+  of `media`, `jellyfin`, and `transmission` (see CLAUDE.md's Storage section).
   Its row's `Volume` label reflects whichever namespace Longhorn's `kubernetesStatus`
   happens to report that run and can change between runs — this is cosmetic, not a
   data error; the usage figures themselves are identical across every mount since

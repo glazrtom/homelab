@@ -9,7 +9,7 @@ image:
 domainPrefix: calibre
 
 # nginx-internal denies by default; calibre has no gatedApps entry and its ingress is
-# hand-written (not lib.ingress), so it opts out explicitly like plex does.
+# hand-written (not lib.ingress), so it opts out explicitly.
 ingress:
   annotations:
     nginx.ingress.kubernetes.io/enable-global-auth: "false"

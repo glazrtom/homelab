@@ -13,7 +13,6 @@
   "ignorePaths": [
     "debug/**",
     "vpn/**",
-    "plex/charts/nginx/**",
     "init.sh"
   ],
   "helm-values": {
@@ -68,12 +67,6 @@
       "matchManagers": ["argocd"],
       "matchDepNames": ["https://github.com/glazrtom/homelab.git"],
       "enabled": false
-    },
-    {
-      "description": "Plex uses a non-semver <major>.<minor>.<patch>.<build>-<hash> scheme; changelogs live on the Plex forum, not GitHub releases.",
-      "matchDepNames": ["plexinc/pms-docker"],
-      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)-.*$",
-      "changelogUrl": "https://forums.plex.tv/c/plex-media-server/release-notes-plex-media-server/62"
     },
     {
       "description": "Pi-hole uses calver YYYY.MM.N; point at the actual image source for changelogs.",

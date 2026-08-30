@@ -1,8 +1,0 @@
-apiVersion: v2
-name: plex
-description: A Helm chart for Plex Media Server
-version: 0.1.0
-#dependencies:
-#  - name: plex-nginx
-#    version: 0.1.0
-#    repository: file://charts/nginx
