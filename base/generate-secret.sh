@@ -1,42 +1,41 @@
 #! /bin/bash
+# GHCR pull secret, reflected by reflector (emberstack) into other namespaces.
+# The live/local Secret stores a single dockerconfigjson blob rather than the three
+# inputs directly, so recovery pulls them back out of that JSON with jq before
+# falling through to a prompt.
 set -euo pipefail
 cd "$(dirname "$0")"
-source ../scripts/seal.sh
+source ../scripts/secretlib.sh
 
-PLAIN=secrets/github-credentials.yaml
-SEALED=github-credentials-sealed.yaml
+secret_parse_args "$@"
+secret_init secrets/github-credentials.yaml github-credentials-sealed.yaml
+secret_source default ghcr-credentials
 
-mkdir -p secrets
-chmod go-rwx secrets
+_ghcr_field() {
+  local field="$1" blob
+  blob="$(local_value ghcr-credentials .dockerconfigjson)"
+  [ -n "$blob" ] || blob="$(live_value default ghcr-credentials .dockerconfigjson)"
+  [ -n "$blob" ] || return 0
+  printf '%s' "$blob" | jq -r ".auths[\"ghcr.io\"].${field} // empty"
+}
 
-if [ ! -f "$PLAIN" ]; then
-  USERNAME="${GHCR_USERNAME:-}"
-  TOKEN="${GHCR_TOKEN:-}"
-  EMAIL="${GHCR_EMAIL:-}"
+: "${GHCR_USERNAME:=$(_ghcr_field username)}"
+: "${GHCR_TOKEN:=$(_ghcr_field password)}"
+: "${GHCR_EMAIL:=$(_ghcr_field email)}"
 
-  [ -n "$USERNAME" ] || read -r -p "Enter GitHub username: " USERNAME
-  [ -n "$TOKEN" ] || read -r -s -p "Enter GitHub PAT: " TOKEN
-  echo
-  [ -n "$EMAIL" ] || read -r -p "Enter GitHub email: " EMAIL
+resolve GHCR_USERNAME --prompt 'Enter GitHub username' --echo
+resolve GHCR_TOKEN --prompt 'Enter GitHub PAT'
+resolve GHCR_EMAIL --prompt 'Enter GitHub email' --echo
 
-  if [ -z "$USERNAME" ] || [ -z "$TOKEN" ] || [ -z "$EMAIL" ]; then
-    echo "Error: username, token and email must be provided"
-    exit 1
-  fi
+kubectl create secret docker-registry ghcr-credentials \
+  --docker-server=ghcr.io \
+  --docker-username="$GHCR_USERNAME" \
+  --docker-password="$GHCR_TOKEN" \
+  --docker-email="$GHCR_EMAIL" \
+  --namespace default \
+  --dry-run=client -o yaml \
+| kubectl annotate --local -f - \
+   $(reflector_annotations "") \
+   --output yaml > "$PLAIN"
 
-  kubectl create secret docker-registry ghcr-credentials \
-    --docker-server=ghcr.io \
-    --docker-username="$USERNAME" \
-    --docker-password="$TOKEN" \
-    --docker-email="$EMAIL" \
-    --namespace default \
-    --dry-run=client -o yaml \
-  | kubectl annotate --local -f - \
-     reflector.v1.k8s.emberstack.com/reflection-allowed=true \
-     --output yaml > "$PLAIN"
-
-  chmod go-rwx "$PLAIN"
-  unset USERNAME TOKEN EMAIL
-fi
-
-seal_if_needed "$PLAIN" "$SEALED"
+secret_finish
