@@ -51,6 +51,11 @@ app: {{ include "lib.fullname" . }}
     path: {{ $d.path }}
     type: CharDevice
 {{- end }}
+{{- range $name, $c := .Values.configMapVolumes }}
+- name: {{ $name }}
+  configMap:
+    name: {{ $c.name }}
+{{- end }}
 {{- end -}}
 
 {{/* Env list from a plain map plus a map of secretKeyRef sources: {env: {...}, secretEnv: {NAME: {name, key}}}. */}}
@@ -79,5 +84,12 @@ app: {{ include "lib.fullname" . }}
 {{- range $name, $d := .Values.devices }}
 - name: {{ $name }}
   mountPath: {{ $d.path }}
+{{- end }}
+{{- range $name, $c := .Values.configMapVolumes }}
+- name: {{ $name }}
+  mountPath: {{ $c.mountPath }}
+  {{- with $c.subPath }}
+  subPath: {{ . }}
+  {{- end }}
 {{- end }}
 {{- end -}}

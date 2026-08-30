@@ -28,3 +28,9 @@ rallly:
     secure: false
     user: "glazrtom.homelab@gmail.com"
     rejectUnauthorized: true
+  extraEnv:
+    - name: SMTP_PWD
+      valueFrom:
+        secretKeyRef:
+          name: smtp-credentials
+          key: SMTP_PWD

@@ -1,0 +1,5 @@
+{{- /* Rolls the pod whenever the rendered config changes - configmap.yaml carries no
+   subPath, so kubelet does sync updates into the mounted directory, but Gatus only
+   picks them up on process start. */}}
+{{- $_ := set .Values "podAnnotations" (dict "checksum/config" (include (print $.Template.BasePath "/configmap.yaml") . | sha256sum)) }}
+{{ include "lib.deployment" . }}

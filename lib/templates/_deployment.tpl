@@ -18,6 +18,10 @@ spec:
       {{- include "lib.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "lib.selectorLabels" . | nindent 8 }}
     spec:

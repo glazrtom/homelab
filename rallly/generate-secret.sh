@@ -47,14 +47,6 @@ if [ ! -f "$PLAIN" ]; then
 
   APP_SECRET="$(_resolve rallly SECRET_PASSWORD "$(_rand 32)")"
   CRON_SECRET="$(_resolve rallly CRON_SECRET "$(_rand 32)")"
-  # SMTP password is human-supplied (Gmail app password). Reuse the live value if
-  # present, else prompt; leave blank to omit the key.
-  SMTP_PWD="$(_live rallly SMTP_PWD)"
-  if [ -z "$SMTP_PWD" ]; then
-    SMTP_PWD="${RALLLY_SMTP_PWD:-}"
-    [ -n "$SMTP_PWD" ] || read -r -s -p "Enter Rallly SMTP password (blank to omit): " SMTP_PWD
-    echo
-  fi
 
   {
     cat <<EOF
@@ -90,11 +82,10 @@ stringData:
   SECRET_PASSWORD: "${APP_SECRET}"
   CRON_SECRET: "${CRON_SECRET}"
 EOF
-    [ -n "$SMTP_PWD" ] && printf '  SMTP_PWD: "%s"\n' "$SMTP_PWD"
   } > "$PLAIN"
 
   chmod go-rwx "$PLAIN"
-  unset PG_PASS GARAGE_RPC GARAGE_AK GARAGE_SK APP_SECRET CRON_SECRET SMTP_PWD
+  unset PG_PASS GARAGE_RPC GARAGE_AK GARAGE_SK APP_SECRET CRON_SECRET
 fi
 
 seal_if_needed "$PLAIN" "$SEALED"

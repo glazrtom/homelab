@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ (.Values.configMapVolumes.config).name }}
+  namespace: {{ include "lib.namespace" . }}
+data:
+  config.yaml: |
+    {{- toYaml .Values.config | nindent 4 }}

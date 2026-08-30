@@ -1,0 +1,153 @@
+namespace: gatus
+
+image:
+  repository: ghcr.io/twin/gatus
+  tag: "v5.19.0"
+  pullPolicy: IfNotPresent
+
+app:
+  name: gatus
+  port: 8080
+  domainPrefix: status
+
+ingress:
+  enabled: true
+  external: true
+  auth: true
+
+volumes:
+  data:
+    create: true
+    size: 1Gi
+    storageClassName: longhorn
+    mountPath: /data
+
+configMapVolumes:
+  config:
+    name: gatus-config
+    mountPath: /config
+
+extraEnv:
+  - name: SMTP_PWD
+    valueFrom:
+      secretKeyRef:
+        name: smtp-credentials
+        key: SMTP_PWD
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+probes:
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 30
+    failureThreshold: 3
+
+config:
+  ui:
+    title: Homelab Status
+  storage:
+    type: sqlite
+    path: /data/data.db
+  alerting:
+    email:
+      from: glazrtom.homelab@gmail.com
+      username: glazrtom.homelab@gmail.com
+      password: "${SMTP_PWD}"
+      host: smtp.gmail.com
+      port: 587
+      to: glazrtom@gmail.com
+      default-alert:
+        enabled: true
+        failure-threshold: 3
+        success-threshold: 2
+        send-on-resolved: true
+  endpoints:
+    - name: jellyfin
+      group: media
+      url: "http://jellyfin.jellyfin:8096/health"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: prowlarr
+      group: media
+      url: "http://prowlarr-main.media:9696/ping"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: radarr
+      group: media
+      url: "http://radarr-personal.media:7878/ping"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: sonarr
+      group: media
+      url: "http://sonarr-personal.media:8989/ping"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: transmission
+      group: media
+      url: "http://transmission.transmission:9091/transmission/web/"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: pihole-web
+      group: infra
+      url: "http://pihole-web.pihole/admin/login"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: pihole-dns
+      group: infra
+      url: "tcp://pihole-dns-tcp-svc.pihole:53"
+      interval: 1m
+      conditions:
+        - "[CONNECTED] == true"
+    - name: authentik
+      group: infra
+      url: "http://authentik-server.authentik/-/health/live/"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: argocd
+      group: infra
+      url: "http://argocd-server.argocd/healthz"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: longhorn
+      group: infra
+      url: "http://longhorn-frontend.longhorn-system"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: rallly
+      group: apps
+      url: "http://rallly.rallly"
+      interval: 1m
+      conditions:
+        - "[STATUS] == 200"
+    - name: auth.glazrtom.cz (edge)
+      group: edge
+      url: "https://auth.glazrtom.cz/-/health/live/"
+      interval: 2m
+      conditions:
+        - "[STATUS] == 200"
+        - "[CERTIFICATE_EXPIRATION] > 240h"

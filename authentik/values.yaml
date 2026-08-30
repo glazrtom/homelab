@@ -75,6 +75,10 @@ gatedApps:
     name: Sonarr
     prefix: sonarr
     group: homelab-personal
+  - slug: gatus
+    name: Status
+    prefix: status
+    group: homelab-admins
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the
