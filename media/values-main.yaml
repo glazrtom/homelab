@@ -8,5 +8,6 @@ radarr:
 
 sonarr:
   enabled: true
+  replicaCount: 0
   app:
     domainPrefix: sonarr
