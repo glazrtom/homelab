@@ -122,6 +122,10 @@ skill that might not fire:
   recreated config PVC comes back **empty**, since Longhorn keys the volume off the PVC's
   UID. Full detail, including recovery and backup constraints: **`longhorn-config`
   skill**.
+- When rebuilding the node from scratch, Longhorn volumes must be restored **between**
+  `ansible/playbooks/cluster.yml` and `ansible/playbooks/apps.yml`, never after — the
+  same PVC-UID rule above means a PVC that `apps.yml` provisions first never picks up a
+  volume swapped under it later. Full runbook: **`doomsday` skill**.
 - **Never rename a `media/application/Application.yaml` (or any ApplicationSet) generator
   element in place.** ArgoCD deletes the Application for the old name and creates a new
   one for the new name; the delete cascades into every resource that Application owned.
@@ -170,3 +174,6 @@ self-explanatory names; comment only non-obvious intent.
   host.
 - **`argocd-ops`** — deploy-workflow failures, `argo-ci` access setup, the
   `argocd-server` OIDC-restart caveat. Not for routine deploy-status checks.
+- **`doomsday`** — full node-loss disaster recovery: rebuild order, restoring Longhorn
+  volumes from B2 into pre-created PVCs, what data doesn't come back, post-restore
+  secret fixups. Not for a routine fresh-host provision with no data to recover.

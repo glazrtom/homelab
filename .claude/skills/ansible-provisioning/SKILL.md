@@ -17,11 +17,16 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
 
 - **`playbooks/cluster.yml`** (the "one command" for a fresh host) runs, in order:
   `server_base` (hostname + dedicated `server` user/group at uid/gid 1001, login user
-  joins the group) → `k3s` (installs k3s only, `--disable traefik --disable servicelb`)
-  → `kubeconfig` (fetches the cluster kubeconfig to the **control node**, `~/.kube/config`,
+  joins the group) → `longhorn_node` (Longhorn host prereqs: `open-iscsi`/`nfs-common`/
+  `cryptsetup`/`dmsetup`, enables `iscsid`, persists the `iscsi_tcp`/`dm_crypt` kernel
+  modules, creates `/var/lib/longhorn`) → `k3s` (installs k3s only, `--disable traefik
+  --disable servicelb --disable local-storage`) → `kubeconfig` (fetches the cluster
+  kubeconfig to the **control node**, `~/.kube/config`,
   rewriting the API server IP — every later role in this playbook talks to the cluster
-  from here on) → `helm` (helm + helm-diff) → `argocd` (namespace + upstream
-  `install.yaml`) → `sealed_secrets` (installs the Sealed Secrets controller via Helm
+  from here on) → `helm` (installs Helm 3; the helm-diff plugin install is currently
+  commented out) → `argocd` (namespace + upstream `install.yaml`, pinned to v3.4.5,
+  applied `--server-side`, then disables internal TLS and rollout-restarts if changed)
+  → `sealed_secrets` (installs the Sealed Secrets controller via Helm
   into `kube-system`) → `cloudflare` (installs/logs in `cloudflared` if needed, creates the
   tunnel and its wildcard DNS route if missing, then runs `cloudflare/generate-secret.sh` —
   the same `scripts/seal.sh` hash-gated reseal used by the other secrets, see the `secrets`
@@ -33,8 +38,8 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   `argocd_apps` (applies `applications/apps.yaml`; ArgoCD then deploys every workload
   under `applications/apps/`).
 - The `secrets` role always runs, looping over the generate scripts of every app in its
-  `secrets_items` list (`authentik/`, `base/` — GHCR and Windscribe).
-  It only prompts for a script's human-supplied values when that script has no local
+  `secrets_items` list — currently 8 scripts across `authentik/`, `base/` (GHCR,
+  Windscribe, SMTP), `rallly/`, `gatus/`, and `longhorn/` (B2). It only prompts for a script's human-supplied values when that script has no local
   plaintext yet; if the plaintext is already there, it's assumed correct and just
   resealed as-is, no prompt (leave a prompt blank to skip that one and keep its
   committed sealed file instead). It then commits and pushes just the sealed files that

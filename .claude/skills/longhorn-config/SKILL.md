@@ -27,7 +27,9 @@ that class provisions into the `protected` RecurringJobSelector group
 `backup-daily`/`system-backup-weekly` jobs target; `longhorn-bulk` and the static
 `shared-media` volume set no selector, so bulk media is never uploaded. Credentials
 are sealed via `longhorn/generate-b2-secret.sh`, following the same pattern as the
-other `generate-*-secret.sh` scripts (see the `secrets` skill).
+other `generate-*-secret.sh` scripts (see the `secrets` skill). For restoring a volume
+*from* one of these backups after total node loss, see the `doomsday` skill — this
+skill only covers producing and retaining backups, not restoring from them.
 
 Two things not to change without re-reading why — this is rejected-design rationale,
 not just current state:
