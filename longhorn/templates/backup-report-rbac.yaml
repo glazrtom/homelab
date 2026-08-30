@@ -1,0 +1,31 @@
+{{- if and .Values.backup.enabled .Values.backup.report.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-report
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-report
+  namespace: {{ .Values.namespace }}
+rules:
+  - apiGroups: ["longhorn.io"]
+    resources: ["backups"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-report
+  namespace: {{ .Values.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: backup-report
+    namespace: {{ .Values.namespace }}
+roleRef:
+  kind: Role
+  name: backup-report
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

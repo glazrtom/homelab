@@ -33,6 +33,14 @@ extraEnv:
       secretKeyRef:
         name: smtp-credentials
         key: SMTP_PWD
+  # Bearer token external-endpoints (push/heartbeat monitors) must present - see
+  # gatus/generate-secret.sh. Reflected from the gatus namespace into every namespace
+  # whose script/CronJob needs to report in.
+  - name: HEARTBEAT_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: gatus-heartbeat-token
+        key: HEARTBEAT_TOKEN
 
 resources:
   requests:
@@ -77,6 +85,18 @@ config:
         failure-threshold: 3
         success-threshold: 2
         send-on-resolved: true
+  # Push/heartbeat monitors - Gatus's equivalent of Uptime Kuma's push URL. No probe
+  # runs; instead a script POSTs its own result to Gatus's API, and Gatus alerts if no
+  # report arrives within the heartbeat interval. Currently just the Longhorn daily
+  # backup report (longhorn/templates/backup-report-cronjob.yaml), which runs 30
+  # minutes after the backup-daily RecurringJob and reports whether every Backup CR it
+  # created is Completed.
+  external-endpoints:
+    - name: longhorn-daily
+      group: backups
+      token: "${HEARTBEAT_TOKEN}"
+      heartbeat:
+        interval: 26h
   endpoints:
     - name: jellyfin
       group: media

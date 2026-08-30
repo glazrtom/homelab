@@ -1,0 +1,89 @@
+{{- if and .Values.backup.enabled .Values.backup.report.enabled }}
+{{- $r := .Values.backup.report }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $r.recurringJob }}-report
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  schedule: {{ $r.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          serviceAccountName: backup-report
+          restartPolicy: Never
+          volumes:
+            - name: shared
+              emptyDir: {}
+          # kubectl and curl run in separate containers (their own minimal images)
+          # rather than trying to find one image with both.
+          initContainers:
+            - name: check
+              image: bitnami/kubectl:1.31
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  CUTOFF="$(date -u -d "-{{ $r.windowHours }} hours" +%Y-%m-%dT%H:%M:%SZ)"
+                  kubectl get backups.longhorn.io -n {{ .Values.namespace }} \
+                    -l recurring-job.longhorn.io/{{ $r.recurringJob }}=enabled \
+                    -o jsonpath='{range .items[*]}{.metadata.creationTimestamp}{"\t"}{.status.state}{"\n"}{end}' \
+                    > /shared/backups.tsv
+
+                  have_recent_completed=false
+                  have_recent_failure=false
+                  while IFS=$'\t' read -r ts state; do
+                    [ -z "$ts" ] && continue
+                    if [[ "$ts" > "$CUTOFF" ]]; then
+                      if [ "$state" = "Completed" ]; then
+                        have_recent_completed=true
+                      else
+                        have_recent_failure=true
+                      fi
+                    fi
+                  done < /shared/backups.tsv
+
+                  if $have_recent_completed && ! $have_recent_failure; then
+                    echo -n success > /shared/status
+                  else
+                    echo -n failure > /shared/status
+                  fi
+              volumeMounts:
+                - name: shared
+                  mountPath: /shared
+          containers:
+            # No failure branch needed: any error in the check container (bad
+            # label/field, API error) already aborts the Job via set -e, and the
+            # heartbeat simply never arrives - Gatus alerts on the missing report
+            # exactly as it would on an explicit failure=true.
+            - name: report
+              image: curlimages/curl:8.11.0
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STATUS="$(cat /shared/status)"
+                  SUCCESS=false
+                  [ "$STATUS" = "success" ] && SUCCESS=true
+                  curl -fsS -X POST \
+                    "$GATUS_URL/api/v1/endpoints/$GATUS_KEY/external?success=$SUCCESS" \
+                    -H "Authorization: Bearer $HEARTBEAT_TOKEN"
+              env:
+                - name: GATUS_URL
+                  value: {{ $r.gatusUrl | quote }}
+                - name: GATUS_KEY
+                  value: {{ printf "%s_%s" $r.endpointGroup $r.endpointName | quote }}
+                - name: HEARTBEAT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $r.tokenSecret }}
+                      key: HEARTBEAT_TOKEN
+              volumeMounts:
+                - name: shared
+                  mountPath: /shared
+{{- end }}

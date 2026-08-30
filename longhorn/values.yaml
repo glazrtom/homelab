@@ -31,6 +31,21 @@ backup:
     # A Go time.Duration string - a bare number (e.g. "300") is rejected by the
     # longhorn.io mutating webhook with "missing unit in duration".
     pollInterval: "300s"
+  # Reports backup-daily's outcome to Gatus as a push/heartbeat monitor (see
+  # gatus/values.yaml external-endpoints and backup-report-cronjob.yaml below) -
+  # Gatus alerts if no "success" report ever arrives, so a failure here fails loud
+  # instead of silently. schedule is offset from backup-daily's own "0 3 * * *"
+  # (recurringjobs.yaml) to give it time to finish; windowHours is the freshness cutoff
+  # a Backup CR must fall within to count, matching heartbeat.interval in gatus/values.yaml.
+  report:
+    enabled: true
+    gatusUrl: "http://gatus.gatus:8080"
+    tokenSecret: gatus-heartbeat-token
+    endpointGroup: backups
+    endpointName: longhorn-daily
+    recurringJob: backup-daily
+    schedule: "30 3 * * *"
+    windowHours: 26
 bulkClassName: longhorn-bulk
 
 # --- upstream subchart overrides ------------------------------------------
