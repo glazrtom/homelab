@@ -97,6 +97,8 @@ config:
       token: "${HEARTBEAT_TOKEN}"
       heartbeat:
         interval: 26h
+      alerts:
+        - type: email
   endpoints:
     - name: jellyfin
       group: media
@@ -104,66 +106,88 @@ config:
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: prowlarr
       group: media
       url: "http://prowlarr-main.media:9696/ping"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: radarr
       group: media
       url: "http://radarr-personal.media:7878/ping"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: sonarr
       group: media
       url: "http://sonarr-personal.media:8989/ping"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: transmission
       group: media
       url: "http://transmission.transmission:9091/transmission/web/"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: pihole-web
       group: infra
       url: "http://pihole-web.pihole/admin/login"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: pihole-dns
       group: infra
       url: "tcp://pihole-dns-tcp-svc.pihole:53"
       interval: 1m
       conditions:
         - "[CONNECTED] == true"
+      alerts:
+        - type: email
     - name: authentik
       group: infra
       url: "http://authentik-server.authentik/-/health/live/"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: argocd
       group: infra
       url: "http://argocd-server.argocd/healthz"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: longhorn
       group: infra
       url: "http://longhorn-frontend.longhorn-system"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: rallly
       group: apps
       url: "http://rallly.rallly"
       interval: 1m
       conditions:
         - "[STATUS] == 200"
+      alerts:
+        - type: email
     - name: auth.glazrtom.cz (edge)
       group: edge
       url: "https://auth.glazrtom.cz/-/health/live/"
@@ -171,3 +195,5 @@ config:
       conditions:
         - "[STATUS] == 200"
         - "[CERTIFICATE_EXPIRATION] > 240h"
+      alerts:
+        - type: email
