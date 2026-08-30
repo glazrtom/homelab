@@ -21,11 +21,9 @@ _live() {
   [ -n "$b64" ] && printf '%s' "$b64" | base64 -d || true
 }
 
-_rand() { LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "$1"; }
-
 if [ ! -f "$PLAIN" ]; then
   TOKEN="$(_live)"
-  [ -n "$TOKEN" ] || TOKEN="$(_rand 40)"
+  [ -n "$TOKEN" ] || TOKEN="$(openssl rand -hex 20)"
 
   kubectl create secret generic gatus-heartbeat-token \
     --namespace "$NAMESPACE" \

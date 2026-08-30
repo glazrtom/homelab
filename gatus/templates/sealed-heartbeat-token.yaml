@@ -1,0 +1,18 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: gatus-heartbeat-token
+  namespace: gatus
+spec:
+  encryptedData:
+    HEARTBEAT_TOKEN: AgBDWoyJXkWnMpkC2JN6pBw3VTwPY+uyHOAz1wNfwCU1n2JuF7JRC+NTgf4qWxSQuqUA+O6XLFeNgyDK4oLMxR0PJCPjJ/OtSXLQatXPULUgHgTItbj4lD2um5tlj3pqF6waenqzFHYuD/wVJjlzjQVZFZp3S6on8Vtc6XFg+Pc/cx0ihNunndoZ3umXVlTHeHPdiSfTANazBojpe5ahUKbQsKApQsD9UA4EGmN6hGSygQHzhzeq/imT2uWiqsjBLqmHq09s8zdJMQAGROsiZRjCIzug74UjaCZoarYUlt13wmgfpMJZ2I1D8PBIopHZS1aj+hU84cw2p/JBy04T9s3VqEr8MPmY5alIJqGSVuzkbi/g0Jb/+ngiCYPGrzYYVq/CMN5t3ly9Cl5nDb24xm1yFsgRPMK+Fktwxh08UWsV3N03tjaVe+Z5Sw2UKzq8NCpmIL2O9ePzqjER5BlrZrI6beP1MYAtas1FAeq4Q+bl4BwysQW3e+uzzpO8ulsN65AHlxDstFGGMgdIY/SfgF4Habqmtu4Og7Mt3u4tG49OTVw55E4IAP4aBUqi1RjKohFM/VSNktxJW4UcsLI5+YRINxCaB0hYvxPxf7660JKG14CBn/XZ3ySvdU2mu6DP/aOnXNoGslXfQFXuqsAfCgljBuBW47XCdq/u1xqRbUkgJ7oxu/o6UHti7oBw2N5fs7WdQMI+Jo7LU9/XFUPbTtNLamBv5XncM/HMpbmRFXb+z5PH6ZY2FAe+
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: longhorn-system
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: longhorn-system
+      name: gatus-heartbeat-token
+      namespace: gatus
