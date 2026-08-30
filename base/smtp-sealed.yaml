@@ -1,0 +1,18 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: smtp-credentials
+  namespace: default
+spec:
+  encryptedData:
+    SMTP_PWD: AgCwpL2tJt9oqP7hlMC6IBdfEjHD/yHEDpgK3bavt7HK84nsC+NJlH6rxuC1i6O491Q8GyZdg46DFGngoAabEgurH0RJaxT/kcVyQPNEmTJ7O74ZMeKD/g/S3r44LU/gG4VyLF8WqUHUu9cZN9f6WkiHB6Y9LrxZGETBoIKjySPKikgiq8UblAWxrDPbKCRrc1MqzzYt+v/sN0TXXsRNKnCw2Lv5ElbZnW6ll3GmVQjCn/N1qPVuIwZpXWP0dm+dgBGxRC9/E8+aEnL89HmTKeHjTuEmwCRI2vW5v6XOBH/nVOcr9uXJTutAYV7Pvl/eY2yMDJ7L1n9XC+ZHlYOSRf/Ns2reHEhN/DfcqUs2NByfccjDTPf2gLIHvX3mLlTbGWa76Iu1qt9wrOF1hxTNt3WSYQCISj0yat3JSMTycNnzmMBJsbdsZQvGp1iI4qI9/m5Z2ovlrJ2WMgPIHKbkR2xgkRbn7QhUrmL5fKyH3FQsD+Eaf7NLrAbocBAT8KsPxWe3cV9zBTSY23afmJ8JzTzgpBNkkD9OTCFyV505RyM08kJsSp0+MiW3Q44zy4CDo5ZCOV6BzHftbEsObaVbl+MpXqKWyLsn9u0j7n8MGVe2Vd1k+0119aWnfUHpo8IVxZzGUVfNpp0qgNUTDCNEzySQsIanRjs2SA4Eh1WmaljL/ozzTccDzs4IROwRa9K/WZqA3KnaGrqwFx1QwOHU17hO2D9f
+  template:
+    metadata:
+      annotations:
+        reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: rallly,gatus
+        reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+        reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: rallly,gatus
+      name: smtp-credentials
+      namespace: default
