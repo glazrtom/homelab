@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
 
       - name: Install validation tooling
         run: python3 -m pip install --break-system-packages --quiet ansible-core yamllint pyyaml
