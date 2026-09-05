@@ -13,7 +13,7 @@ ingress:
 image:
   repository: haugene/transmission-openvpn
   pullPolicy: IfNotPresent
-  tag: "5.4.2"
+  tag: "5.5.2"
 
 extraEnv:
   - name: OPENVPN_PROVIDER
