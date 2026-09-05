@@ -3,5 +3,5 @@ replicaCount: 1
 
 image:
   repository: cloudflare/cloudflared
-  tag: "2026.7.3"
+  tag: "2026.8.3"
   pullPolicy: Always
