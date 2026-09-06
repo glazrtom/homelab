@@ -69,6 +69,16 @@ data:
     metadata:
       name: homelab - Access
     entries:
+      # default-authentication-flow is a built-in flow only ever referenced here by
+      # slug (never defined), so its User Login stage is matched by the name Authentik
+      # ships it under rather than declared fresh - this updates that existing stage in
+      # place instead of creating a duplicate.
+      - model: authentik_stages_user_login.userloginstage
+        identifiers:
+          name: default-authentication-login
+        attrs:
+          session_duration: days=7
+
       # Membership stays a UI concern. GroupSerializer.users defaults to [] when
       # omitted and the importer builds a non-partial serializer, so without
       # state: created a re-apply would empty every group.
