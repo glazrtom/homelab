@@ -16,6 +16,14 @@ spec:
         name: {{ $cls.className }}
         default: false
       ingressClass: {{ $cls.className }}
+{{- if $.Values.metrics.enabled }}
+      metrics:
+        enabled: true
+        service:
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "10254"
+{{- end }}
       service:
 {{- if $cls.loadBalancerIP }}
         annotations:

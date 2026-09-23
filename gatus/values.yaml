@@ -67,6 +67,7 @@ probes:
     failureThreshold: 3
 
 config:
+  metrics: true
   ui:
     title: Homelab Status
   storage:

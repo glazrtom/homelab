@@ -1,0 +1,71 @@
+# Alertmanager's webhook receiver -> phone push. Hand-written rather than
+# lib.deployment/lib.service: those render off this chart's single root
+# .Values.app/.Values.image/.Values.volumes, already spoken for by Grafana's
+# ingress (see values.yaml). Internal-only - no Ingress, reachable only from
+# Alertmanager inside the cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: ntfy
+spec:
+  replicas: 1
+  revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+    spec:
+      priorityClassName: {{ .Values.priorityClassName }}
+      containers:
+        - name: ntfy
+          image: {{ .Values.ntfy.image.repository }}:{{ .Values.ntfy.image.tag }}
+          args: ["serve"]
+          env:
+            - name: TZ
+              value: {{ .Values.global.timezone | quote }}
+            - name: NTFY_BASE_URL
+              value: "http://ntfy.{{ .Values.namespace }}"
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.ntfy.volumes.data.mountPath }}
+          resources:
+            requests: { cpu: 10m, memory: 128Mi }
+            limits: { cpu: 100m, memory: 128Mi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ntfy-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: ntfy
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-data-pvc
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  storageClassName: {{ .Values.ntfy.volumes.data.storageClassName }}
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.ntfy.volumes.data.size }}

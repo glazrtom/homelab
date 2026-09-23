@@ -55,7 +55,9 @@ in a headless run nobody templates it before it merges:
 - Plain YAML: `yamllint <file>` (chart templates are Go templates and are excluded via
   `.yamllint.yml`).
 
-Cluster reads should go through the `mcp__kubernetes__*` MCP tools first, falling back to
+Cluster reads should go through the `mcp__kubernetes__*` MCP tools first, always with
+`context: homelab` explicitly passed (the MCP server can default to a different context),
+falling back to
 sandboxed `kubectl --context homelab` for verbs the MCP doesn't cover (e.g. `rollout status`,
 `wait`, `port-forward`, `kubeseal`, `helm status`/`list`, or `curl` to a LAN host). Prefix
 that fallback with `NO_PROXY=localhost,127.0.0.1 no_proxy=localhost,127.0.0.1 ` — the API

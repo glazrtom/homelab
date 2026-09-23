@@ -1,0 +1,228 @@
+# --- local values, consumed by our own templates -------------------------
+namespace: monitoring
+
+# Grafana's own ingress/authOutpost - app.name must match the kube-prometheus-stack
+# release name's Grafana Service ("monitoring-grafana", since ArgoCD's implicit
+# Helm release name is the Application name) rather than lib.fullname's default.
+app:
+  name: grafana
+  domainPrefix: grafana
+
+service:
+  name: monitoring-grafana
+  port: 80
+
+# Reachable from the internet, but gated by its own Authentik provider - only
+# homelab-admins get in. Provider declared in authentik/values.yaml.
+ingress:
+  enabled: true
+  external: true
+  auth: true
+
+priorityClassName: homelab-monitoring
+
+# ntfy: Alertmanager's webhook target. Hand-written Deployment/Service/PVC
+# (templates/ntfy.yaml) rather than lib.deployment/lib.service, since those render
+# from the chart's single root .Values.app/.Values.image/.Values.volumes, which
+# this chart already uses for Grafana's ingress above.
+ntfy:
+  image:
+    repository: binwiederhier/ntfy
+    tag: "v2.11.0"
+  topic: alerts
+  volumes:
+    data:
+      size: 1Gi
+      storageClassName: longhorn
+      mountPath: /var/cache/ntfy
+
+# healthchecks.io dead-man switch: one DaemonSet, every node self-registers as its
+# own check via slug auto-provisioning (/ping/<key>/<slug>). PING_KEY comes from a
+# real healthchecks.io account (see generate-secret.sh) - there is no default/free
+# value to generate, so this stays disabled until that key is sealed.
+deadManSwitch:
+  enabled: false
+  image:
+    repository: curlimages/curl
+    tag: "8.11.1"
+  intervalSeconds: 300
+
+# --- upstream subchart overrides ------------------------------------------
+kube-prometheus-stack:
+  # k3s runs the control plane inside one process with no separately-exposed
+  # controller-manager/scheduler/proxy/etcd - without disabling these, the
+  # matching KubeControllerManagerDown/KubeSchedulerDown/KubeProxyDown/etcd alerts
+  # fire permanently from minute one.
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+
+  kubeApiServer:
+    serviceMonitor:
+      interval: 60s
+      # apiserver_request_duration_seconds_bucket alone is a large share of
+      # apiserver series on a single-node cluster; drop the buckets, keep the
+      # _count/_sum/_total gauges that alerts and dashboards actually use.
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "apiserver_request_duration_seconds_bucket|apiserver_response_sizes_bucket"
+          action: drop
+
+  coreDns:
+    serviceMonitor:
+      interval: 60s
+
+  # Tier A - 15s: container/host resource usage spikes between samples in a way
+  # that matters mid-incident. cAdvisor ships via the same kubelet endpoint but
+  # gets its own relabel list; its histogram buckets are the single largest
+  # source of container-level series and are dropped the same way the apiserver's
+  # are above.
+  kubelet:
+    serviceMonitor:
+      interval: 15s
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "go_.*|grpc_server_handled_total"
+          action: drop
+      cAdvisorMetricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "container_.*_bucket"
+          action: drop
+
+  kube-state-metrics:
+    priorityClassName: homelab-monitoring
+    prometheus:
+      monitor:
+        interval: 60s
+
+  nodeExporter:
+    enabled: true
+
+  prometheus-node-exporter:
+    priorityClassName: homelab-monitoring
+    # Tier A - 15s. hwmon/thermal_zone/cpufreq cover the rockchip SoC's thermal
+    # throttling; the base collector set already includes cpu/meminfo/diskstats/
+    # netdev/filesystem/pressure (PSI).
+    extraArgs:
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/containerd/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+      - --collector.hwmon
+      - --collector.thermal_zone
+      - --collector.cpufreq
+    prometheus:
+      monitor:
+        interval: 15s
+
+  # Self-signed cert + patch Job (default, no cert-manager in this cluster) - the
+  # Job patches the webhook's caBundle at install/upgrade time, same reason
+  # longhorn/metallb's webhooks need an ignoreDifferences entry on the ArgoCD
+  # Application (applications/core/monitoring.yaml).
+  prometheusOperator:
+    priorityClassName: homelab-monitoring
+
+  grafana:
+    priorityClassName: homelab-monitoring
+    # Ingress is rendered by this chart's own templates/ingress.yaml (lib.ingress),
+    # gated by Authentik - not the subchart's own ingress (which knows nothing
+    # about the two IngressClasses or forward-auth).
+    ingress:
+      enabled: false
+    admin:
+      existingSecret: monitoring-grafana-admin
+      # Uppercase-with-underscore because generate-secret.sh's resolve() uses the
+      # Secret key as a bash variable name (rallly/generate-secret.sh does the
+      # same for POSTGRES_USER etc.) - hyphens aren't legal there.
+      userKey: ADMIN_USER
+      passwordKey: ADMIN_PASSWORD
+    # Grafana never gets its own SSO login: the outpost's forward-auth already
+    # gates this Ingress, and auth.proxy trusts the X-authentik-username header
+    # it sets - one login, no second credential prompt.
+    grafana.ini:
+      server:
+        root_url: "https://%(domain)s/"
+      auth.proxy:
+        enabled: true
+        header_name: X-authentik-username
+        header_property: username
+        auto_sign_up: true
+    additionalDataSources:
+      - name: Prometheus
+        type: prometheus
+        url: http://monitoring-kube-prometheus-prometheus.monitoring:9090
+        access: proxy
+        isDefault: true
+
+  alertmanager:
+    alertmanagerSpec:
+      priorityClassName: homelab-monitoring
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { cpu: 10m, memory: 32Mi }
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: longhorn
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        receiver: ntfy
+        group_by: ["alertname", "namespace"]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+        routes:
+          # The always-firing Watchdog alert never reaches ntfy - it exists so an
+          # external dead-man switch (healthchecks.io) can watch the alerting
+          # pipeline itself: no ping means Prometheus or Alertmanager is down.
+          - receiver: "null"
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+        - name: ntfy
+          webhook_configs:
+            - url: http://ntfy.monitoring:80/alerts/publish
+              send_resolved: true
+
+  prometheus:
+    prometheusSpec:
+      # Tier B default - everything not overridden per-target above inherits this.
+      # Object-state targets (kube-state-metrics, Longhorn, ArgoCD, MetalLB,
+      # cloudflared, gatus, self-monitoring) change on the scale of minutes; 15s
+      # buys nothing there.
+      scrapeInterval: 60s
+      priorityClassName: homelab-monitoring
+      resources:
+        requests: { cpu: 200m, memory: 512Mi }
+        limits: { cpu: 200m, memory: 512Mi }
+      # Time bound is generous on purpose - it isn't the disk guard.
+      # retentionSize is: it caps growth before the 10Gi PVC below fills, even if
+      # the active-series estimate the scrape/relabel config above is tuned
+      # against turns out low.
+      retention: 31d
+      retentionSize: 8GiB
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: longhorn-bulk
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+      # ~40-60 5m-resolution series (node CPU/mem/thermal, per-namespace container
+      # CPU/RSS, Longhorn volume size, ingress RPS/5xx per host, ArgoCD synced
+      # count) so a full-window Grafana panel reads recorded points instead of
+      # every raw 15s/60s sample. Query-speed layer only - raw data stays at full
+      # resolution for the whole 31d retention regardless. ruleSelectorNilUsesHelmValues
+      # (default true) already matches templates/recording-rules.yaml's
+      # release: {{ .Release.Name }} label - no override needed here.
