@@ -1,0 +1,110 @@
+# Native /metrics endpoints that need only a ServiceMonitor/PodMonitor pointed at
+# an existing Service/pod - no sidecars, which is what keeps phase 1 inside the
+# RAM budget. serviceMonitorNamespaceSelector/podMonitorNamespaceSelector default
+# to {} (match all namespaces), so these can point at Services in other
+# namespaces without any extra selector wiring.
+#
+# Deferred: MetalLB's frr-metrics (metallb-system, port frrmetricshttps/9141) is
+# mTLS-protected by kube-rbac-proxy in this chart version - scraping it needs a
+# client cert this chart doesn't yet provision. Revisit once that's worked out
+# rather than shipping a target that silently never comes up.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: longhorn
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  namespaceSelector:
+    matchNames: ["longhorn-system"]
+  selector:
+    matchLabels:
+      app: longhorn-manager
+  endpoints:
+    - port: manager
+      interval: 60s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  namespaceSelector:
+    matchNames: ["argocd"]
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - argocd-metrics
+          - argocd-server-metrics
+          - argocd-repo-server
+  endpoints:
+    - port: metrics
+      interval: 60s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gatus
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  namespaceSelector:
+    matchNames: ["gatus"]
+  selector:
+    matchLabels:
+      app: gatus
+  endpoints:
+    # gatus's Service port is unnamed (lib.service doesn't name ports), so target
+    # it by number rather than name.
+    - portNumber: 8080
+      path: /metrics
+      interval: 60s
+---
+# ingress-nginx: controller.metrics.enabled is set per-class in ingress/values.yaml,
+# which adds a "metrics" port to each controller's existing Service.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ingress-nginx
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  namespaceSelector:
+    matchNames: ["ingress"]
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values: ["controller"]
+  endpoints:
+    - port: metrics
+      interval: 15s
+---
+# cloudflared already runs --metrics=0.0.0.0:3333 (cloudflare/templates/deployment.yaml)
+# but declares no named container port and has no Service in front of it - a
+# PodMonitor needs only the pod's own label and the numeric container port, so
+# this needs no change to the cloudflare/ chart.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cloudflared
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  namespaceSelector:
+    matchNames: ["cloudflared"]
+  selector:
+    matchLabels:
+      app: cloudflared
+  podMetricsEndpoints:
+    - portNumber: 3333
+      interval: 60s

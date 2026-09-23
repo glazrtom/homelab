@@ -79,6 +79,10 @@ gatedApps:
     name: Status
     prefix: status
     group: homelab-admins
+  - slug: grafana
+    name: Grafana
+    prefix: grafana
+    group: homelab-admins
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the

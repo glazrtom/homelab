@@ -17,3 +17,8 @@ controllers:
     # helmchart.yaml - nested inside config: it would silently be ignored.
     proxySetHeaders:
       X-Forwarded-Proto: "$real_scheme"
+
+# Consumed by helmchart.yaml on both controllers - request/5xx/latency per host
+# for monitoring/templates/servicemonitors.yaml's ingress-nginx ServiceMonitor.
+metrics:
+  enabled: true

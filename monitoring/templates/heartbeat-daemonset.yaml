@@ -1,0 +1,53 @@
+{{- if .Values.deadManSwitch.enabled }}
+# One shared ping key, every node self-registers as its own healthchecks.io check
+# via slug auto-provisioning (/ping/<key>/<slug>) - a single check shared across
+# nodes would stay green as long as any one node survives. Scales to N nodes with
+# zero per-node config. Watches the alerting pipeline itself via the Watchdog
+# alert's route (see values.yaml alertmanager.config) - if Prometheus or
+# Alertmanager dies, this ping stops and healthchecks.io alerts independently of
+# both.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: healthchecks-heartbeat
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: healthchecks-heartbeat
+spec:
+  selector:
+    matchLabels:
+      app: healthchecks-heartbeat
+  template:
+    metadata:
+      labels:
+        app: healthchecks-heartbeat
+    spec:
+      priorityClassName: {{ $.Values.priorityClassName }}
+      containers:
+        - name: heartbeat
+          image: "{{ .Values.deadManSwitch.image.repository }}:{{ .Values.deadManSwitch.image.tag }}"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                curl -fsS -m 10 "https://hc-ping.com/${PING_KEY}/${NODE_NAME}" || true
+                sleep {{ .Values.deadManSwitch.intervalSeconds }}
+              done
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: PING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: monitoring-healthchecks
+                  key: PING_KEY
+          resources:
+            requests:
+              cpu: 5m
+              memory: 8Mi
+            limits:
+              cpu: 20m
+              memory: 8Mi
+{{- end }}

@@ -1,0 +1,35 @@
+# Query-speed layer over full-resolution data, not a retention tier: a year-long
+# Grafana panel reads these 5m points instead of every raw 15s/60s sample. Raw
+# data stays on disk at full resolution for the whole 31d retention regardless -
+# a second low-resolution/long-retention Prometheus was considered and rejected,
+# see .claude/plans/look-at-the-both-iridescent-floyd.md.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: monitoring-recording-rules
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  groups:
+    - name: homelab.trends
+      interval: 5m
+      rules:
+        - record: node:cpu_utilization:ratio
+          expr: 1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))
+        - record: node:memory_available:ratio
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+        - record: node:thermal_zone_temp:max_celsius
+          expr: max(node_thermal_zone_temp)
+        - record: namespace:container_cpu_usage:sum_rate
+          expr: sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))
+        - record: namespace:container_memory_working_set:sum_bytes
+          expr: sum by (namespace) (container_memory_working_set_bytes{container!=""})
+        - record: longhorn:volume_actual_size:bytes
+          expr: longhorn_volume_actual_size_bytes
+        - record: ingress:requests:sum_rate
+          expr: sum by (ingress, exported_namespace) (rate(nginx_ingress_controller_requests[5m]))
+        - record: ingress:requests_5xx:sum_rate
+          expr: sum by (ingress, exported_namespace) (rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+        - record: argocd:app_synced:count
+          expr: count(argocd_app_info{sync_status="Synced"})
