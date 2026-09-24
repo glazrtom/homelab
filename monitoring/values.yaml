@@ -28,7 +28,7 @@ priorityClassName: homelab-monitoring
 ntfy:
   image:
     repository: binwiederhier/ntfy
-    tag: "v2.11.0"
+    tag: "v2.28.0"
   topic: alerts
   volumes:
     data:
