@@ -4,10 +4,13 @@ kind: Service
 metadata:
   name: {{ include "lib.fullname" . }}
   namespace: {{ include "lib.namespace" . }}
+  labels:
+    {{- include "lib.selectorLabels" . | nindent 4 }}
 spec:
   selector:
     {{- include "lib.selectorLabels" . | nindent 4 }}
   ports:
-    - port: {{ include "lib.servicePort" . }}
+    - name: http
+      port: {{ include "lib.servicePort" . }}
       targetPort: {{ .Values.app.port }}
 {{- end -}}

@@ -11,7 +11,7 @@ spec:
     matchLabels:
       app: gatus
   endpoints:
-    - portNumber: 8080
+    - port: http
       path: /metrics
       interval: {{ .Values.global.monitoring.interval.slow }}
 {{- end }}

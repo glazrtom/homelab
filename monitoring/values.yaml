@@ -41,11 +41,11 @@ ntfy:
 # real healthchecks.io account (see generate-secret.sh) - there is no default/free
 # value to generate, so this stays disabled until that key is sealed.
 deadManSwitch:
-  enabled: false
+  enabled: true
   image:
     repository: curlimages/curl
     tag: "8.11.1"
-  intervalSeconds: 300
+  intervalSeconds: 60
 
 # --- upstream subchart overrides ------------------------------------------
 kube-prometheus-stack:

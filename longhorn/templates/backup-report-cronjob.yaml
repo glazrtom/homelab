@@ -24,12 +24,12 @@ spec:
           # rather than trying to find one image with both.
           initContainers:
             - name: check
-              image: bitnami/kubectl:1.31
+              image: alpine/k8s:1.36.2
               command: ["/bin/bash", "-c"]
               args:
                 - |
                   set -euo pipefail
-                  CUTOFF="$(date -u -d "-{{ $r.windowHours }} hours" +%Y-%m-%dT%H:%M:%SZ)"
+                  CUTOFF="$(date -u -d "@$(( $(date +%s) - {{ $r.windowHours }} * 3600 ))" +%Y-%m-%dT%H:%M:%SZ)"
                   kubectl get backups.longhorn.io -n {{ .Values.namespace }} \
                     -l recurring-job.longhorn.io/{{ $r.recurringJob }}=enabled \
                     -o jsonpath='{range .items[*]}{.metadata.creationTimestamp}{"\t"}{.status.state}{"\n"}{end}' \
