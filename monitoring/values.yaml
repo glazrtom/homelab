@@ -26,6 +26,7 @@ priorityClassName: homelab-monitoring
 # from the chart's single root .Values.app/.Values.image/.Values.volumes, which
 # this chart already uses for Grafana's ingress above.
 ntfy:
+  replicas: 0
   image:
     repository: binwiederhier/ntfy
     tag: "v2.11.0"
@@ -101,13 +102,14 @@ kube-prometheus-stack:
           action: drop
 
   kube-state-metrics:
+    replicas: 0
     priorityClassName: homelab-monitoring
     prometheus:
       monitor:
         interval: 60s
 
   nodeExporter:
-    enabled: true
+    enabled: false
 
   prometheus-node-exporter:
     priorityClassName: homelab-monitoring
@@ -132,6 +134,7 @@ kube-prometheus-stack:
     priorityClassName: homelab-monitoring
 
   grafana:
+    replicas: 0
     priorityClassName: homelab-monitoring
     # Ingress is rendered by this chart's own templates/ingress.yaml (lib.ingress),
     # gated by Authentik - not the subchart's own ingress (which knows nothing
@@ -159,6 +162,7 @@ kube-prometheus-stack:
 
   alertmanager:
     alertmanagerSpec:
+      replicas: 0
       priorityClassName: homelab-monitoring
       resources:
         requests: { cpu: 10m, memory: 32Mi }
@@ -208,6 +212,7 @@ kube-prometheus-stack:
       # is mTLS-protected by kube-rbac-proxy in this chart version - scraping it
       # needs a client cert this chart doesn't yet provision. Revisit once that's
       # worked out rather than shipping a target that silently never comes up.
+      replicas: 0
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
       # Tier B default - everything not overridden per-target above inherits this.
