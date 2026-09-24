@@ -38,7 +38,7 @@ backup:
   # (recurringjobs.yaml) to give it time to finish; windowHours is the freshness cutoff
   # a Backup CR must fall within to count, matching heartbeat.interval in gatus/values.yaml.
   report:
-    enabled: true
+    enabled: false
     gatusUrl: "http://gatus.gatus:8080"
     tokenSecret: gatus-heartbeat-token
     endpointGroup: backups

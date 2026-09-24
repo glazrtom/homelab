@@ -13,6 +13,9 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 0
+      # Bounds a stuck pod (e.g. an unpullable image) so the CronJob's
+      # concurrencyPolicy: Forbid can't wedge every future run behind it.
+      activeDeadlineSeconds: 1800
       template:
         spec:
           serviceAccountName: backup-report
@@ -30,9 +33,10 @@ spec:
                 - |
                   set -euo pipefail
                   CUTOFF="$(date -u -d "@$(( $(date +%s) - {{ $r.windowHours }} * 3600 ))" +%Y-%m-%dT%H:%M:%SZ)"
+                  # Backup CRs don't carry a recurring-job label; the job name only
+                  # shows up in .status.labels.RecurringJob, so filter in jsonpath.
                   kubectl get backups.longhorn.io -n {{ .Values.namespace }} \
-                    -l recurring-job.longhorn.io/{{ $r.recurringJob }}=enabled \
-                    -o jsonpath='{range .items[*]}{.metadata.creationTimestamp}{"\t"}{.status.state}{"\n"}{end}' \
+                    -o jsonpath='{range .items[?(@.status.labels.RecurringJob=="{{ $r.recurringJob }}")]}{.metadata.creationTimestamp}{"\t"}{.status.state}{"\n"}{end}' \
                     > /shared/backups.tsv
 
                   have_recent_completed=false
