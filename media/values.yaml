@@ -52,7 +52,7 @@ radarr:
     port: 7878
   image:
     repository: linuxserver/radarr
-    tag: "6.3.0"
+    tag: "6.4.4"
   ingress:
     enabled: true
     external: true
