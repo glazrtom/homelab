@@ -44,7 +44,7 @@ deadManSwitch:
   enabled: true
   image:
     repository: curlimages/curl
-    tag: "8.11.1"
+    tag: "8.22.0"
   intervalSeconds: 60
 
 # --- upstream subchart overrides ------------------------------------------
