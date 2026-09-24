@@ -183,6 +183,13 @@ data:
             authentik_host_browser: http://{{ .Values.app.domainPrefix }}.{{ $internal }}/
             kubernetes_namespace: {{ include "lib.namespace" . }}
             kubernetes_service_type: ClusterIP
+            # This Deployment is created by the outpost controller, not Helm, so
+            # global.priorityClassName above doesn't reach it - patch it directly.
+            kubernetes_json_patches:
+              deployment:
+                - op: add
+                  path: /spec/template/spec/priorityClassName
+                  value: homelab-authentik
 
       # The backchannel link is only writable from the Application side
       # (LDAPProviderSerializer doesn't expose it), so the provider must be
@@ -230,6 +237,11 @@ data:
             kubernetes_namespace: {{ include "lib.namespace" . }}
             kubernetes_replicas: 1
             kubernetes_service_type: ClusterIP
+            kubernetes_json_patches:
+              deployment:
+                - op: add
+                  path: /spec/template/spec/priorityClassName
+                  value: homelab-authentik
 
       # search_full_directory is granted on the user directly: the group -> role path
       # is not blueprintable, GroupRole being an internally-managed through-model.

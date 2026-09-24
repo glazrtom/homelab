@@ -1,0 +1,10 @@
+# Second-highest priority in the repo, below homelab-monitoring (100) and above every
+# regular workload (0, the default) - forward-auth gates every other host, so Authentik
+# itself must be the last thing evicted or preempted behind monitoring.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: homelab-authentik
+value: 90
+globalDefault: false
+description: Evicted after monitoring, before everything else - gates every other host.

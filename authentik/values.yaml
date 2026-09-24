@@ -101,6 +101,10 @@ authentik:
     envFrom:
       - secretRef:
           name: authentik-secrets
+    # Falls back to server/worker (and the embedded outpost, which runs inside the
+    # server pod). Every host is forward-auth'd through this chart, so it must outlast
+    # regular workloads under node pressure.
+    priorityClassName: homelab-authentik
 
   authentik:
     error_reporting:
@@ -122,6 +126,8 @@ authentik:
         userPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
         adminPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
     primary:
+      # The Bitnami subchart doesn't read the upstream authentik.global value above.
+      priorityClassName: homelab-authentik
       persistence:
         enabled: true
         storageClass: longhorn

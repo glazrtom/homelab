@@ -1,12 +1,18 @@
-# Ranks above every workload chart in this repo (none of which set one, so they
-# default to 0) so the kubelet's eviction ranking - QoS class first, then priority -
-# never picks the monitoring stack under memory pressure. Guaranteed QoS (requests
-# == limits on Prometheus/Alertmanager, set in values.yaml) does the rest; priority
-# alone only breaks ties within the same QoS class.
+# Ranks above homelab-authentik (90) and every other workload chart in this repo (none
+# of which set one, so they default to 0) so the kubelet's eviction ranking - QoS class
+# first, then priority - never picks the monitoring stack under memory pressure.
+# Guaranteed QoS (requests == limits on Prometheus/Alertmanager, set in values.yaml)
+# does the rest; priority alone only breaks ties within the same QoS class.
+#
+# value is immutable, so a change here needs Force=true,Replace=true below to let
+# ArgoCD delete and recreate it rather than failing a normal apply. Pods already
+# running keep the priority they resolved at admission until they next restart.
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
   name: homelab-monitoring
-value: 1000000
+  annotations:
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+value: 100
 globalDefault: false
 description: Evicted last - monitors the workloads that would otherwise be evicted first.
