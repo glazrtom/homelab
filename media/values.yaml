@@ -15,7 +15,7 @@ prowlarr:
     port: 9696
   image:
     repository: linuxserver/prowlarr
-    tag: "2.5.2"
+    tag: "2.6.5"
   ingress:
     enabled: true
     external: true
