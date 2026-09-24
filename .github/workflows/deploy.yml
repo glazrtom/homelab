@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Wait for ArgoCD to sync and go healthy
         run: scripts/argocd-wait.sh "$GITHUB_SHA"
