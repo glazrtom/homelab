@@ -53,3 +53,19 @@ global:
       - downloads/incomplete
       - movies
       - series
+
+  # Charts render their own ServiceMonitor/PodMonitor (prometheus-operator CRDs,
+  # installed by monitoring/). Turning this off lets the cluster come up with the
+  # monitoring stack removed entirely.
+  monitoring:
+    serviceMonitors: true
+
+    # The two scrape tiers, so a chart declares which tier its target is in rather
+    # than repeating a literal. Tier A: things that spike between samples and get
+    # stared at mid-incident. Tier B: object state that changes over minutes.
+    # monitoring/values.yaml repeats these literally for the subchart's own
+    # monitors (kubelet, node-exporter, KSM, apiserver, CoreDNS) - a values file
+    # can't reference another value, so those two places must be kept in step.
+    interval:
+      fast: 15s
+      slow: 60s

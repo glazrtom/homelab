@@ -1,0 +1,18 @@
+{{- if .Values.global.monitoring.serviceMonitors }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ingress-nginx
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values: ["controller"]
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.global.monitoring.interval.fast }}
+{{- end }}

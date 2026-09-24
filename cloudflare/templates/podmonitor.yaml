@@ -1,0 +1,16 @@
+{{- if .Values.global.monitoring.serviceMonitors }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cloudflared
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  selector:
+    matchLabels:
+      app: cloudflared
+  podMetricsEndpoints:
+    - portNumber: 3333
+      interval: {{ .Values.global.monitoring.interval.slow }}
+{{- end }}
