@@ -168,7 +168,7 @@ local_value() {
 
 rand_b64()  { openssl rand -base64 "$1"; }
 rand_hex()  { openssl rand -hex "$1"; }
-rand_alnum() { LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "$1"; }
+rand_alnum() { openssl rand -base64 "$(( $1 * 2 ))" | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c "$1"; }
 
 # reflector_annotations ns1,ns2,... - the four reflector.v1.k8s.emberstack.com
 # annotations, one per line so `kubectl annotate --local -f - $(reflector_annotations ...)`

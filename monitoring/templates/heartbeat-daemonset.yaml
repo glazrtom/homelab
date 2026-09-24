@@ -30,7 +30,7 @@ spec:
           args:
             - |
               while true; do
-                curl -fsS -m 10 "https://hc-ping.com/${PING_KEY}/${NODE_NAME}" || true
+                curl -fsS -m 10 "https://hc-ping.com/${PING_KEY}/${NODE_NAME}?create=1" || true
                 sleep {{ .Values.deadManSwitch.intervalSeconds }}
               done
           env:
