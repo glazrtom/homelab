@@ -156,12 +156,6 @@ kube-prometheus-stack:
         header_name: X-authentik-username
         header_property: username
         auto_sign_up: true
-    additionalDataSources:
-      - name: Prometheus
-        type: prometheus
-        url: http://monitoring-kube-prometheus-prometheus.monitoring:9090
-        access: proxy
-        isDefault: true
 
   alertmanager:
     alertmanagerSpec:
