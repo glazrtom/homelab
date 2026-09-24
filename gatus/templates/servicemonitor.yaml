@@ -1,0 +1,17 @@
+{{- if .Values.global.monitoring.serviceMonitors }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gatus
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  selector:
+    matchLabels:
+      app: gatus
+  endpoints:
+    - portNumber: 8080
+      path: /metrics
+      interval: {{ .Values.global.monitoring.interval.slow }}
+{{- end }}

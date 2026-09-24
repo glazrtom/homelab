@@ -77,6 +77,12 @@ kube-prometheus-stack:
     serviceMonitor:
       interval: 60s
 
+  # Tier A/B intervals below are literals, not references to
+  # global.monitoring.interval - a values file can't reference another value.
+  # That global is the canonical definition of the two tiers for the charts
+  # under applications/core|apps that render their own monitors; keep these in
+  # step with it by hand.
+  #
   # Tier A - 15s: container/host resource usage spikes between samples in a way
   # that matters mid-incident. cAdvisor ships via the same kubelet endpoint but
   # gets its own relabel list; its histogram buckets are the single largest
@@ -196,6 +202,20 @@ kube-prometheus-stack:
 
   prometheus:
     prometheusSpec:
+      # Monitors for third-party targets (longhorn, argocd, gatus, ingress-nginx,
+      # cloudflared) live in the charts they monitor, not here - see each chart's
+      # templates/servicemonitor.yaml or podmonitor.yaml, gated on
+      # global.monitoring.serviceMonitors. They can't carry this release's name
+      # as a label, so nil selectors here mean "match every
+      # ServiceMonitor/PodMonitor in every namespace" instead of the Helm default
+      # of "only ones labelled release: <this release>".
+      #
+      # Deferred: MetalLB's frr-metrics (metallb-system, port frrmetricshttps/9141)
+      # is mTLS-protected by kube-rbac-proxy in this chart version - scraping it
+      # needs a client cert this chart doesn't yet provision. Revisit once that's
+      # worked out rather than shipping a target that silently never comes up.
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
       # Tier B default - everything not overridden per-target above inherits this.
       # Object-state targets (kube-state-metrics, Longhorn, ArgoCD, MetalLB,
       # cloudflared, gatus, self-monitoring) change on the scale of minutes; 15s
