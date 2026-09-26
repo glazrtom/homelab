@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-install
+  namespace: argocd
+  labels:
+    homelab/tier: core
+  annotations:
+    # Before the `argocd` chart Application (sync-wave "1") - the CRDs and
+    # Deployments upstream ships must exist before its ConfigMap overlay applies.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/glazrtom/homelab.git
+    targetRevision: HEAD
+    path: argocd/install-gitops
+  destination:
+    namespace: argocd
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      # prune: false - a broken render here must never delete ArgoCD's own
+      # Deployments/CRDs out from under itself.
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The CRDs upstream ships exceed the client-side last-applied-config
+      # annotation size limit - same reason the ansible bootstrap uses --server-side.
+      - ServerSideApply=true

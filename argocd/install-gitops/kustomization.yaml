@@ -1,0 +1,36 @@
+# Synced by the argocd-install Application (applications/core/argocd-install.yaml).
+# Builds on ../install/kustomization.yaml (still applied directly by the ansible
+# bootstrap), removing argocd-cm/argocd-cmd-params-cm/argocd-rbac-cm - those three stay
+# owned by the `argocd` Application (argocd/, applications/core/argo.yaml) so OIDC/RBAC
+# config doesn't flap between two owners.
+resources:
+  - ../install
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cm
+  - target:
+      kind: ConfigMap
+      name: argocd-cmd-params-cm
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmd-params-cm
+  - target:
+      kind: ConfigMap
+      name: argocd-rbac-cm
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-rbac-cm

@@ -96,6 +96,15 @@ for the `gh *` family, always unsandboxed per `excludedCommands`), and prefer pa
   needed.
 - Each `Application` points at a per-service directory (`jellyfin/`, `pihole/`, etc.) that
   is a self-contained local Helm chart (`Chart.yaml`, `values.yaml`, `templates/`).
+- ArgoCD's own install (`argocd/install/`, the upstream kustomize manifest plus
+  resource requests/limits) is bootstrapped once by the ansible `argocd` role
+  (`kubectl apply -k`, before ArgoCD exists to sync anything), then handed off to the
+  `argocd-install` Application (`applications/core/argocd-install.yaml`, path
+  `argocd/install-gitops`), which keeps syncing it going forward — no manual re-apply
+  after the initial bootstrap. `argocd/install-gitops` deletes `argocd-cm`,
+  `argocd-cmd-params-cm` and `argocd-rbac-cm` from that base, since those three stay
+  owned by the `argocd` chart Application (`argocd/`) to avoid two Applications
+  fighting over OIDC/RBAC config.
 - `media/` is different: `media/application/Application.yaml` is an **ApplicationSet**
   with a list generator that instantiates the same `media/` chart multiple times
   (`media-global`: prowlarr + the shared PVC + the shared Authentik outpost objects;
