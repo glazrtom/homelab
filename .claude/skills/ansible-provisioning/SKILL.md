@@ -21,9 +21,10 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   `cryptsetup`/`dmsetup`, enables `iscsid`, persists the `iscsi_tcp`/`dm_crypt` kernel
   modules, creates `/var/lib/longhorn`) → `k3s` (installs k3s only, `--disable traefik
   --disable servicelb --disable local-storage`) → `kubeconfig` (fetches the cluster
-  kubeconfig to the **control node**, `~/.kube/config`,
-  rewriting the API server IP — every later role in this playbook talks to the cluster
-  from here on) → `helm` (installs Helm 3; the helm-diff plugin install is currently
+  kubeconfig to the **control node** as `~/.kube/homelab.yaml`, renamed to the `homelab`
+  context and with the API server IP rewritten — every later role in this playbook talks
+  to the cluster via that dedicated file from here on — then merges just that `homelab`
+  context into `~/.kube/config`, leaving every other context there untouched) → `helm` (installs Helm 3; the helm-diff plugin install is currently
   commented out) → `argocd` (namespace + upstream `install.yaml`, pinned to v3.4.5,
   applied `--server-side`, then disables internal TLS and rollout-restarts if changed)
   → `sealed_secrets` (installs the Sealed Secrets controller via Helm
@@ -56,9 +57,11 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
 - Prompt-bearing roles/playbooks (`storage`, `secrets`, and the `cloudflare` role's
   install/login/commit/push prompts) no-op or fall back sensibly when left blank — see
   each role/playbook for specifics.
-- Tunables live in each role's `defaults/main.yml`. `kubeconfig_path` (the local,
-  control-node kubeconfig used from `kubeconfig` onward) and `path_home` are shared via
-  `group_vars/all.yml`.
+- Tunables live in each role's `defaults/main.yml`. `kubeconfig_path` (the dedicated,
+  control-node `~/.kube/homelab.yaml` used from `kubeconfig` onward),
+  `kubeconfig_merged_path` (the shared `~/.kube/config` that only gets the `homelab`
+  context merged into it, never overwritten), `kube_context` (`homelab`), and
+  `path_home` are shared via `group_vars/all.yml`.
 - Provisions as the existing `glazrtom` user against the `[server]` host in `inventory.ini`
   — no separate bootstrap inventory.
 
