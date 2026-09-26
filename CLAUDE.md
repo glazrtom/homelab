@@ -25,7 +25,11 @@ A workload that must live on a specific node (a `hostPath`/local-disk mount, an
 `externalTrafficPolicy: Local` LoadBalancer Service tied to one node's IP, a device
 plugin) is pinned there explicitly via `nodeSelector` (see `pihole/values.yaml`) — do
 not assume single-node scheduling. Everything else is left to the scheduler; do not
-add blanket node preferences to ordinary workloads.
+add blanket node preferences to ordinary workloads. A single-replica Deployment with an
+RWO PVC must use `strategy: Recreate` (the `lib.deployment` default when `.Values.strategy`
+is unset) — `RollingUpdate` deadlocks via `Multi-Attach error` the moment the scheduler
+puts the new pod on a different node than the old one, since the new pod can't attach
+the volume until the old one releases it.
 
 ## Git workflow
 

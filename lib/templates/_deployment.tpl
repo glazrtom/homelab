@@ -9,10 +9,19 @@ metadata:
 spec:
   replicas: {{ if hasKey .Values "replicaCount" }}{{ .Values.replicaCount }}{{ else }}1{{ end }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
-  {{- with .Values.strategy }}
   strategy:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- if .Values.strategy }}
+    {{- toYaml .Values.strategy | nindent 4 }}
+    {{- else }}
+    # RollingUpdate deadlocks a single-replica Deployment that mounts an RWO PVC as
+    # soon as the scheduler puts the new pod on a different node than the old one -
+    # the new pod can't attach the volume until the old one releases it, but
+    # RollingUpdate won't kill the old one until the new one is Ready. Recreate avoids
+    # this at the cost of brief downtime per rollout; a chart can still opt back into
+    # RollingUpdate (e.g. a stateless multi-replica workload) via .Values.strategy.
+    type: Recreate
+    rollingUpdate: null
+    {{- end }}
   selector:
     matchLabels:
       {{- include "lib.selectorLabels" . | nindent 6 }}

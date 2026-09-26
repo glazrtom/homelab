@@ -33,9 +33,6 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/app-root: /admin/
 
-strategy:
-  type: Recreate
-
 # LB IP uses externalTrafficPolicy: Local, and the config PVC is RWO - pin to orangepi
 # (the always-on control-plane node) rather than letting it float onto the worker node.
 nodeSelector:

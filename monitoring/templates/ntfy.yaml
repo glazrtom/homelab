@@ -13,6 +13,11 @@ metadata:
 spec:
   replicas: {{ .Values.ntfy.replicas }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
+  # RollingUpdate deadlocks on the RWO data PVC if the new pod lands on a different
+  # node than the old one - see lib/templates/_deployment.tpl for the full rationale.
+  strategy:
+    type: Recreate
+    rollingUpdate: null
   selector:
     matchLabels:
       app: ntfy
