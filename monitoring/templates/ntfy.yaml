@@ -22,6 +22,10 @@ spec:
         app: ntfy
     spec:
       priorityClassName: {{ .Values.priorityClassName }}
+      {{- with .Values.ntfy.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: ntfy
           image: {{ .Values.ntfy.image.repository }}:{{ .Values.ntfy.image.tag }}

@@ -28,6 +28,10 @@ prowlarr:
       mountPath: /config
   sidecarsTemplate: prowlarr.vpnContainer
   extraEnvTemplate: media.authEnv
+  resources:
+    requests:
+      cpu: 20m
+      memory: 256Mi
   vpn:
     image: qmcgaw/gluetun
     env:
@@ -37,6 +41,10 @@ prowlarr:
       DNS_KEEP_NAMESERVER: "on"
       FIREWALL: "on"
       FIREWALL_OUTBOUND_SUBNETS: 10.42.0.0/15
+    resources:
+      requests:
+        cpu: 10m
+        memory: 48Mi
     secretEnv:
       OPENVPN_USER:
         name: windscribe-auth
@@ -58,6 +66,10 @@ radarr:
     external: true
     auth: true
   extraEnvTemplate: media.authEnv
+  resources:
+    requests:
+      cpu: 20m
+      memory: 256Mi
   volumes:
     config:
       create: true
@@ -81,6 +93,10 @@ sonarr:
     external: true
     auth: true
   extraEnvTemplate: media.authEnv
+  resources:
+    requests:
+      cpu: 20m
+      memory: 256Mi
   volumes:
     config:
       create: true

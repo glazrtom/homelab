@@ -13,9 +13,19 @@ Makefile/Taskfile, and no build step.
 **Everything runs on Kubernetes — there is no Docker Compose anywhere in this repo**, and
 new services must not introduce it. A workload is a local Helm chart plus an ArgoCD
 `Application`; multi-container workloads are pods with sidecars (e.g. prowlarr's gluetun
-VPN sidecar in `media/`), not compose services. The single k3s node is provisioned by
+VPN sidecar in `media/`), not compose services. The k3s nodes are provisioned by
 `ansible/` — see the `ansible-provisioning` skill for the full playbook order;
-everything above the node is ArgoCD's.
+everything above the nodes is ArgoCD's.
+
+The cluster is two nodes, **mixed architecture**: `orangepi` (arm64, the k3s server —
+control plane, ArgoCD, Longhorn's default disk) and `dell` (amd64, a k3s agent, labelled
+`homelab/node-class=worker` and `homelab/gpu=intel`). Any image a chart references must
+publish an amd64 build (or the pod simply won't schedule where the scheduler puts it).
+A workload that must live on a specific node (a `hostPath`/local-disk mount, an
+`externalTrafficPolicy: Local` LoadBalancer Service tied to one node's IP, a device
+plugin) is pinned there explicitly via `nodeSelector` (see `pihole/values.yaml`) — do
+not assume single-node scheduling. Everything else is left to the scheduler; do not
+add blanket node preferences to ordinary workloads.
 
 ## Git workflow
 
@@ -124,6 +134,11 @@ skill that might not fire:
   recreated config PVC comes back **empty**, since Longhorn keys the volume off the PVC's
   UID. Full detail, including recovery and backup constraints: **`longhorn-config`
   skill**.
+- The `longhorn` StorageClass (config/DB volumes) runs **2 replicas** — one per node, so
+  either node can go down without losing data. `longhorn-bulk` (the shared media volume,
+  Prometheus's TSDB) stays at **1 replica** — deliberately, it's large and either
+  rebuildable from source or not worth doubling; don't "fix" it up to 2 by copying the
+  default. New volumes on either class get this by default; nothing per-chart to set.
 - When rebuilding the node from scratch, Longhorn volumes must be restored **between**
   `ansible/playbooks/cluster.yml` and `ansible/playbooks/apps.yml`, never after — the
   same PVC-UID rule above means a PVC that `apps.yml` provisions first never picks up a

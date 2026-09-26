@@ -46,16 +46,25 @@ backup:
     recurringJob: backup-daily
     schedule: "30 3 * * *"
     windowHours: 26
-bulkClassName: longhorn-bulk
+
+class:
+  bulk:
+    name: longhorn-bulk
+    replicaCount: 1
 
 # --- upstream subchart overrides ------------------------------------------
 # Most of these exist only to undo the upstream chart's 3-node assumptions.
 longhorn:
   defaultSettings:
-    # Replicas per volume when the StorageClass doesn't specify. Upstream: 3.
-    # On one node, 3 replicas can never satisfy anti-affinity, so the volume
-    # would sit Degraded forever.
-    defaultReplicaCount: 1
+    # Replicas per volume when the StorageClass doesn't specify. Upstream: 3. Two nodes
+    # can satisfy at most 2 (anti-affinity forbids two replicas on the same node), so
+    # this is capped at the node count rather than upstream's 3.
+    defaultReplicaCount: 2
+
+    # A node going down otherwise leaves its RWO pods stuck Terminating - the volume
+    # can't attach anywhere until the node comes back. With 2 nodes and 2 replicas, the
+    # surviving replica lets Longhorn delete-and-reschedule the pod instead.
+    nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
 
     # Where replica data lives on the host disk. Same as upstream default;
     # stated explicitly because ansible/roles/longhorn_node pre-creates it.
@@ -81,8 +90,8 @@ longhorn:
     defaultClass: true
 
     # numberOfReplicas baked into that StorageClass. A class parameter
-    # overrides defaultReplicaCount above, so both must be set to 1.
-    defaultClassReplicaCount: 1
+    # overrides defaultReplicaCount above, so both must be kept in step.
+    defaultClassReplicaCount: 2
 
     # Data survives PVC deletion (including an accidental ArgoCD prune).
     # Upstream default: Delete.
@@ -98,11 +107,12 @@ longhorn:
       jobList: '[{"name":"protected","isGroup":true}]'
 
   longhornUI:
-    replicas: 1 # upstream default is 2; pointless on one node
+    replicas: 1  # upstream default is 2; not worth HA-ing a management UI on 2 nodes
 
   csi:
-    # The four CSI sidecars each default to 3 replicas for HA. On one node
-    # the extras are idle leader-election losers.
+    # The four CSI sidecars each default to 3 replicas for HA. 2 nodes still can't
+    # satisfy that spread, and a single instance of each is enough at this scale -
+    # the extras would just be idle leader-election losers.
     attacherReplicaCount: 1
     provisionerReplicaCount: 1
     resizerReplicaCount: 1

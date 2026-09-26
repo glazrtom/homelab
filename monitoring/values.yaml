@@ -21,12 +21,28 @@ ingress:
 
 priorityClassName: homelab-monitoring
 
+# Soft preference for the worker node (dell, labelled homelab/node-class=worker) - the
+# control-plane node (orangepi) already carries k3s + ArgoCD, so give monitoring's own
+# footprint somewhere else to land. Soft, not required: monitoring must still run with
+# only orangepi up. Reused via YAML anchor by ntfy below and by every kube-prometheus-
+# stack component's own affinity key further down.
+workerAffinity: &workerAffinity
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: homelab/node-class
+              operator: In
+              values: ["worker"]
+
 # ntfy: Alertmanager's webhook target. Hand-written Deployment/Service/PVC
 # (templates/ntfy.yaml) rather than lib.deployment/lib.service, since those render
 # from the chart's single root .Values.app/.Values.image/.Values.volumes, which
 # this chart already uses for Grafana's ingress above.
 ntfy:
   replicas: 0
+  affinity: *workerAffinity
   image:
     repository: binwiederhier/ntfy
     tag: "v2.11.0"
@@ -104,6 +120,7 @@ kube-prometheus-stack:
   kube-state-metrics:
     replicas: 0
     priorityClassName: homelab-monitoring
+    affinity: *workerAffinity
     prometheus:
       monitor:
         interval: 60s
@@ -132,10 +149,12 @@ kube-prometheus-stack:
   # Application (applications/core/monitoring.yaml).
   prometheusOperator:
     priorityClassName: homelab-monitoring
+    affinity: *workerAffinity
 
   grafana:
     replicas: 0
     priorityClassName: homelab-monitoring
+    affinity: *workerAffinity
     # Ingress is rendered by this chart's own templates/ingress.yaml (lib.ingress),
     # gated by Authentik - not the subchart's own ingress (which knows nothing
     # about the two IngressClasses or forward-auth).
@@ -164,6 +183,7 @@ kube-prometheus-stack:
     alertmanagerSpec:
       replicas: 0
       priorityClassName: homelab-monitoring
+      affinity: *workerAffinity
       resources:
         requests: { cpu: 10m, memory: 32Mi }
         limits: { cpu: 10m, memory: 32Mi }
@@ -213,6 +233,7 @@ kube-prometheus-stack:
       # needs a client cert this chart doesn't yet provision. Revisit once that's
       # worked out rather than shipping a target that silently never comes up.
       replicas: 0
+      affinity: *workerAffinity
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
       # Tier B default - everything not overridden per-target above inherits this.

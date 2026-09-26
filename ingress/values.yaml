@@ -22,3 +22,8 @@ controllers:
 # for monitoring/templates/servicemonitors.yaml's ingress-nginx ServiceMonitor.
 metrics:
   enabled: true
+
+resources:
+  requests:
+    cpu: 30m
+    memory: 256Mi

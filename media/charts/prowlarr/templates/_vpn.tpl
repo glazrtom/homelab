@@ -10,6 +10,10 @@
         - NET_ADMIN
   env:
     {{- include "lib.env" (dict "env" .Values.vpn.env "secretEnv" .Values.vpn.secretEnv) | nindent 4 }}
+  {{- with .Values.vpn.resources }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   startupProbe:
     exec:
       command: ["/gluetun-entrypoint", "healthcheck"]

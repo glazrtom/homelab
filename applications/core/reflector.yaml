@@ -18,6 +18,10 @@ spec:
       releaseName: reflector
       values: |
         replicaCount: 1
+        resources:
+          requests:
+            cpu: 10m
+            memory: 128Mi
 
   destination:
     server: https://kubernetes.default.svc

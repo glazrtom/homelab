@@ -33,6 +33,11 @@ securityContext:
     add:
       - NET_ADMIN
 
+resources:
+  requests:
+    cpu: 200m
+    memory: 64Mi
+
 volumes:
   config:
     create: true

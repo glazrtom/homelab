@@ -1,6 +1,7 @@
 # Values under `metallb:` are passed through to the upstream metallb
 # dependency chart; the defaults (speaker + controller, no extra config) are
-# fine for this single-node homelab.
+# fine for this homelab - the speaker runs as a DaemonSet on every node, so L2
+# advertisement keeps working regardless of which node a service's pod lands on.
 metallb: {}
 
 ipAddressPool:

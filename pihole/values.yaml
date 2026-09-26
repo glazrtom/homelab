@@ -36,6 +36,16 @@ ingress:
 strategy:
   type: Recreate
 
+# LB IP uses externalTrafficPolicy: Local, and the config PVC is RWO - pin to orangepi
+# (the always-on control-plane node) rather than letting it float onto the worker node.
+nodeSelector:
+  kubernetes.io/hostname: orangepi
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+
 dnsPolicy: None
 dnsConfig:
   nameservers:

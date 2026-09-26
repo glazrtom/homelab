@@ -24,6 +24,10 @@ spec:
             prometheus.io/scrape: "true"
             prometheus.io/port: "10254"
 {{- end }}
+{{- if $.Values.resources }}
+      resources:
+{{ toYaml $.Values.resources | indent 8 }}
+{{- end }}
       service:
 {{- if $cls.loadBalancerIP }}
         annotations:

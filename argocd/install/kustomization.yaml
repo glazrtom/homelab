@@ -2,3 +2,152 @@ namespace: argocd
 resources:
   - namespace.yaml
   - https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.5/manifests/install.yaml
+
+# The upstream install manifest ships no requests/limits on any workload - on a
+# 2-node homelab that lets one component starve the scheduler's view of the rest.
+# Sized from observed usage (kubectl top), generous headroom on limits for
+# repo-server's helm-template spikes and the application-controller's reconcile loop.
+# Memory request always equals memory limit (unlike CPU) - mismatched memory
+# request/limit lets a pod grow past what the scheduler accounted for when placing
+# it, risking node pressure/evictions instead of a contained OOM-kill.
+patches:
+  - target:
+      kind: StatefulSet
+      name: argocd-application-controller
+    patch: |-
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: argocd-application-controller
+      spec:
+        template:
+          spec:
+            containers:
+              - name: argocd-application-controller
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 1Gi
+                  limits:
+                    cpu: "1"
+                    memory: 1Gi
+  - target:
+      kind: Deployment
+      name: argocd-repo-server
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-repo-server
+      spec:
+        template:
+          spec:
+            containers:
+              - name: argocd-repo-server
+                resources:
+                  requests:
+                    cpu: 20m
+                    memory: 1Gi
+                  limits:
+                    cpu: "1"
+                    memory: 1Gi
+  - target:
+      kind: Deployment
+      name: argocd-server
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-server
+      spec:
+        template:
+          spec:
+            containers:
+              - name: argocd-server
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 256Mi
+                  limits:
+                    cpu: 500m
+                    memory: 256Mi
+  - target:
+      kind: Deployment
+      name: argocd-redis
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-redis
+      spec:
+        template:
+          spec:
+            containers:
+              - name: redis
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 128Mi
+                  limits:
+                    cpu: 200m
+                    memory: 128Mi
+  - target:
+      kind: Deployment
+      name: argocd-dex-server
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-dex-server
+      spec:
+        template:
+          spec:
+            containers:
+              - name: dex
+                resources:
+                  requests:
+                    cpu: 5m
+                    memory: 128Mi
+                  limits:
+                    cpu: 100m
+                    memory: 128Mi
+  - target:
+      kind: Deployment
+      name: argocd-applicationset-controller
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-applicationset-controller
+      spec:
+        template:
+          spec:
+            containers:
+              - name: argocd-applicationset-controller
+                resources:
+                  requests:
+                    cpu: 5m
+                    memory: 128Mi
+                  limits:
+                    cpu: 200m
+                    memory: 128Mi
+  - target:
+      kind: Deployment
+      name: argocd-notifications-controller
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-notifications-controller
+      spec:
+        template:
+          spec:
+            containers:
+              - name: argocd-notifications-controller
+                resources:
+                  requests:
+                    cpu: 5m
+                    memory: 128Mi
+                  limits:
+                    cpu: 100m
+                    memory: 128Mi

@@ -110,6 +110,18 @@ authentik:
     error_reporting:
       enabled: false
 
+  server:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 600Mi
+
+  worker:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 320Mi
+
   # Mounted into the worker at /blueprints/mounted/cm-<name>, discovered hourly and
   # on worker start.
   blueprints:
@@ -132,3 +144,7 @@ authentik:
         enabled: true
         storageClass: longhorn
         size: 2Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 200Mi

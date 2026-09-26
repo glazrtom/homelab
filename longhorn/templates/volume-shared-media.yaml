@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   size: "{{ .Values.global.sharedMedia.sizeBytes }}"
-  numberOfReplicas: {{ .Values.longhorn.defaultSettings.defaultReplicaCount }}
+  numberOfReplicas: {{ .Values.class.bulk.replicaCount }}
   accessMode: rwx
   frontend: blockdev
   staleReplicaTimeout: 30

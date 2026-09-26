@@ -1,12 +1,12 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ .Values.bulkClassName }}
+  name: {{ .Values.class.bulk.name }}
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 parameters:
-  numberOfReplicas: "1"
+  numberOfReplicas: {{ .Values.class.bulk.replicaCount | quote }}
   staleReplicaTimeout: "30"
   fsType: ext4
