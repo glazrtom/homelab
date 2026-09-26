@@ -61,7 +61,8 @@ in a headless run nobody templates it before it merges:
 - Charts: `helm template <chart>/ -f global/values.yaml -f <chart>/values.yaml`.
 - Ansible: `cd ansible && ansible-playbook --syntax-check playbooks/<pb>.yml` (see the
   `ansible-provisioning` skill for why `--syntax-check` must come immediately after
-  `ansible-playbook`).
+  `ansible-playbook`, and for the `2>&1 | cat` workaround if it hits a sandbox
+  non-blocking-IO error).
 - Plain YAML: `yamllint <file>` (chart templates are Go templates and are excluded via
   `.yamllint.yml`).
 

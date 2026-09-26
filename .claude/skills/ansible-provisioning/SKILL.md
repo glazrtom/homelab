@@ -71,3 +71,8 @@ documenting the original fully-manual setup order — reference only, not a scri
 flag must come **immediately** after `ansible-playbook`, since that exact prefix is what
 the `@claude` GitHub Action allowlists (a full play run is deliberately not permitted in
 headless runs).
+
+If it fails with `ERROR: Ansible requires blocking IO on stdin/stdout/stderr. Non-blocking
+file handles detected: <stdout>, <stderr>`, that's a sandbox pipe artifact, not a real
+playbook problem — rerun as `ansible-playbook --syntax-check playbooks/<pb>.yml 2>&1 | cat`
+(both streams need to go through the pipe; `| cat` alone still leaves stderr non-blocking).
