@@ -82,7 +82,7 @@ refresh_soft() {
 # Uses api_get_soft: an app that vanished between enumeration and check just counts as
 # not-ok for this iteration, rather than aborting the whole run.
 app_ok() {
-  local name="$1" json sync health repo revision phase ok
+  local name="$1" json sync health repo revision phase op_revision ok
   json="$(api_get_soft "/applications/${name}")" || {
     printf '%-20s (gone)\n' "$name" >&2
     return 1
@@ -93,10 +93,12 @@ app_ok() {
   revision="$(jq -r '.status.sync.revision' <<<"$json")"
   # sync/health go green as soon as resources reconcile, but the sync *operation*
   # (PostSync hooks included - e.g. authentik's blueprint-apply Job) can still be
-  # running underneath that. Only gate on an operation still in flight - a stale
-  # Failed/Error from an older operation must not permanently fail this check, since
-  # real problems already surface through sync/health above.
+  # running underneath that. Only gate on an operation still in flight, or one that
+  # Failed/Errored for THIS revision - a stale Failed/Error from an older operation
+  # must not permanently fail this check, since real problems on an old revision
+  # already surface through sync/health above.
   phase="$(jq -r '.status.operationState.phase // ""' <<<"$json")"
+  op_revision="$(jq -r '.status.operationState.operation.sync.revision // .status.operationState.syncResult.revision // ""' <<<"$json")"
 
   ok=1
   [ "$sync" = "Synced" ] && [ "$health" = "Healthy" ] && ok=0
@@ -105,9 +107,14 @@ app_ok() {
   fi
   case "$phase" in
     Running | Terminating) ok=1 ;;
+    Failed | Error)
+      if [ "$repo" = "$ARGOCD_REPO_URL" ] && [ "$op_revision" = "$REVISION" ]; then
+        ok=1
+      fi
+      ;;
   esac
 
-  printf '%-20s sync=%-10s health=%-10s phase=%-11s revision=%s\n' "$name" "$sync" "$health" "$phase" "$revision" >&2
+  printf '%-20s sync=%-10s health=%-10s phase=%-11s revision=%s op_revision=%s\n' "$name" "$sync" "$health" "$phase" "$revision" "$op_revision" >&2
   return "$ok"
 }
 
