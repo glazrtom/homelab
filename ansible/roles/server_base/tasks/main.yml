@@ -26,3 +26,18 @@
     name: "{{ server_admin_user }}"
     groups: "{{ server_group }}"
     append: true
+
+# Needed on every node for the VPN sidecars (transmission-openvpn, prowlarr's gluetun) -
+# whichever node they land on must have tun available.
+- name: Persist the tun kernel module across reboots
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/tun.conf
+    content: "tun\n"
+    mode: "0644"
+
+- name: Load the tun kernel module now
+  become: true
+  community.general.modprobe:
+    name: tun
+    state: present

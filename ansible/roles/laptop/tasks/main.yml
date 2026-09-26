@@ -1,0 +1,31 @@
+# Keeps a laptop node up with the lid closed and stops it from suspending under load -
+# both would silently take a k3s node (and anything scheduled on it) offline.
+- name: Ensure the logind drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/logind.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Ignore the lid switch
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/systemd/logind.conf.d/lid.conf
+    mode: "0644"
+    content: |
+      [Login]
+      HandleLidSwitch=ignore
+      HandleLidSwitchExternalPower=ignore
+      HandleLidSwitchDocked=ignore
+  notify: restart systemd-logind
+
+- name: Mask sleep/suspend/hibernate targets
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+  loop:
+    - sleep.target
+    - suspend.target
+    - hibernate.target
+    - hybrid-sleep.target

@@ -1,4 +1,5 @@
-server_hostname: orangepi
+# Overridden per host in inventory.ini (server_hostname=...).
+server_hostname: "{{ inventory_hostname | lower }}"
 
 # Dedicated non-login service account/group; the login user is added to the group.
 server_group: server

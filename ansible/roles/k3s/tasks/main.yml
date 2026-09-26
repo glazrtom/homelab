@@ -1,8 +1,27 @@
-- name: Download and install k3s
+- name: Ensure /etc/rancher/k3s exists
   become: true
-  ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="{{ k3s_install_exec }}" sh -
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+# Read by both k3s and k3s-agent at start - node-label / kubelet-arg live here rather
+# than in INSTALL_K3S_EXEC, since that only takes effect on first install (the shell
+# task below is guarded by `creates:` and never reruns).
+- name: Write the k3s config file
+  become: true
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0644"
+  notify: "{{ 'restart k3s-agent' if 'agent' in group_names else 'restart k3s' }}"
+
+- name: Download and install k3s (server)
+  become: true
+  ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" INSTALL_K3S_EXEC="{{ k3s_install_exec }}" sh -
   args:
     creates: /usr/local/bin/k3s
+  when: "'agent' not in group_names"
 
 - name: Ensure k3s service is enabled and running
   become: true
@@ -10,3 +29,33 @@
     name: k3s
     state: started
     enabled: yes
+  when: "'agent' not in group_names"
+
+- name: Read the server's node token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_raw
+  become: true
+  delegate_to: "{{ groups['server'][0] }}"
+  when: "'agent' in group_names"
+
+- name: Download and install k3s (agent)
+  become: true
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_VERSION="{{ k3s_version }}"
+    K3S_URL="{{ k3s_server_url }}"
+    K3S_TOKEN="{{ k3s_node_token_raw.content | b64decode | trim }}"
+    INSTALL_K3S_EXEC="{{ k3s_agent_install_exec }}"
+    sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when: "'agent' in group_names"
+
+- name: Ensure k3s-agent service is enabled and running
+  become: true
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: started
+    enabled: yes
+  when: "'agent' in group_names"

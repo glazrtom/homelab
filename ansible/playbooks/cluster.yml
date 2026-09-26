@@ -5,6 +5,14 @@
     - longhorn_node
     - k3s
 
+- name: Provision agents and join them to the cluster
+  hosts: agent
+  roles:
+    - server_base
+    - longhorn_node
+    - laptop
+    - k3s
+
 - name: Fetch the cluster kubeconfig to the control node
   hosts: server
   roles:
