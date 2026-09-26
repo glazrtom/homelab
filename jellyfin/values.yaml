@@ -18,6 +18,9 @@ ingress:
   # gatedApps skipPathRegex in authentik/values.yaml.
   auth: true
 
+nodeSelector:
+  homelab/gpu: intel
+
 volumes:
   config:
     create: true
@@ -31,10 +34,15 @@ volumes:
 resources:
   requests:
     cpu: 500m
-    memory: 512Mi
+    memory: 4Gi
+    gpu.intel.com/i915: "1"
   limits:
     cpu: "4"
     memory: 4Gi
+    gpu.intel.com/i915: "1"
+
+podSecurityContext:
+  supplementalGroups: [993]  # render on dell
 
 probes:
   readinessProbe:
@@ -52,17 +60,6 @@ probes:
     periodSeconds: 60
     failureThreshold: 3
 
-# Hardware transcoding (RKMPP) needs the legacy BSP kernel (linux-image-legacy-rockchip64) -
-# the mainline current-rockchip64 kernel this cluster runs exposes only V4L2 stateless codec
-# devices, which jellyfin-ffmpeg cannot drive. Uncomment once the node is on the legacy kernel.
-# devices:
-#   dri:
-#     path: /dev/dri
-#   mali:
-#     path: /dev/mali0
-#   mpp:
-#     path: /dev/mpp_service
-#   rga:
-#     path: /dev/rga
-# podSecurityContext:
-#   supplementalGroups: [990, 44]  # render, video (as seen on orangepi)
+# Intel QuickSync transcoding on dell: applications/core/intel-gpu-plugin.yaml runs the
+# upstream device plugin DaemonSet, which advertises gpu.intel.com/i915 and hands the pod
+# /dev/dri/renderD128 via CDI, no hostPath/privileged access needed here.

@@ -9,3 +9,7 @@ spec:
   accessMode: rwx
   frontend: blockdev
   staleReplicaTimeout: 30
+  # Lets Longhorn build a replica on whichever node ends up running the engine/share-manager
+  # and drop the one left behind, instead of requiring a manual replica move. Longhorn
+  # currently picks the share-manager's node itself - there's no selector to pin it.
+  dataLocality: best-effort
