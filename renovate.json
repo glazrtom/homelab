@@ -103,11 +103,6 @@
       "sourceUrl": "https://github.com/Prowlarr/Prowlarr"
     },
     {
-      "description": "Images pinned to a floating tag: pin+bump the digest instead so updates are still reviewable. These PRs carry no real changelog - the actual fix is pinning a version.",
-      "matchDepNames": ["linuxserver/calibre-web"],
-      "pinDigests": true
-    },
-    {
       "description": "authentik chart changelog lives in the main authentik repo, not the Helm chart repo.",
       "matchDepNames": ["authentik"],
       "matchManagers": ["helmv3"],
