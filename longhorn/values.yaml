@@ -51,7 +51,7 @@ backup:
 hooks:
   image:
     repository: alpine/k8s
-    tag: "1.36.2"
+    tag: "1.36.5"
 
 # PostSync hook (replica-enforcer-job.yaml) that re-applies
 # longhorn.persistence.defaultClassReplicaCount to every volume the `longhorn` class
