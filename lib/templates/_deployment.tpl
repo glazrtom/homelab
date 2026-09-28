@@ -73,6 +73,10 @@ spec:
         - name: {{ .Values.app.name }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          {{- with .Values.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             {{- if .Values.app.ports }}
             {{- toYaml .Values.app.ports | nindent 12 }}

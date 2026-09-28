@@ -1,0 +1,54 @@
+namespace: ntfy
+
+image:
+  repository: binwiederhier/ntfy
+  tag: "v2.28.0"
+  pullPolicy: IfNotPresent
+
+args: ["serve"]
+
+app:
+  name: ntfy
+  port: 80
+  domainPrefix: ntfy
+
+priorityClassName: homelab-monitoring
+
+# ntfy's mobile/desktop clients speak plain HTTP/WebSocket Basic/Bearer auth, not the
+# Authentik forward-auth browser redirect - auth: false + ntfy's own NTFY_AUTH_* env
+# (deny-all default, see templates/_env.tpl) instead of a gatedApps entry.
+ingress:
+  enabled: true
+  external: true
+  auth: false
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+volumes:
+  data:
+    create: true
+    size: 1Gi
+    storageClassName: longhorn
+    mountPath: /var/cache/ntfy
+
+extraEnvTemplate: ntfy.env
+
+resources:
+  requests: { cpu: 10m, memory: 128Mi }
+  limits: { cpu: 100m, memory: 128Mi }
+
+probes:
+  readinessProbe:
+    httpGet:
+      path: /v1/health
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /v1/health
+      port: 80
+    initialDelaySeconds: 15
+    periodSeconds: 30

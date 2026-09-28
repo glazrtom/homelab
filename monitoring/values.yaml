@@ -24,8 +24,8 @@ priorityClassName: homelab-monitoring
 # Soft preference for the worker node (dell, labelled homelab/node-class=worker) - the
 # control-plane node (orangepi) already carries k3s + ArgoCD, so give monitoring's own
 # footprint somewhere else to land. Soft, not required: monitoring must still run with
-# only orangepi up. Reused via YAML anchor by ntfy below and by every kube-prometheus-
-# stack component's own affinity key further down.
+# only orangepi up. Reused via YAML anchor by every kube-prometheus-stack component's
+# own affinity key further down.
 workerAffinity: &workerAffinity
   nodeAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
@@ -35,23 +35,6 @@ workerAffinity: &workerAffinity
             - key: homelab/node-class
               operator: In
               values: ["worker"]
-
-# ntfy: Alertmanager's webhook target. Hand-written Deployment/Service/PVC
-# (templates/ntfy.yaml) rather than lib.deployment/lib.service, since those render
-# from the chart's single root .Values.app/.Values.image/.Values.volumes, which
-# this chart already uses for Grafana's ingress above.
-ntfy:
-  replicas: 1
-  affinity: *workerAffinity
-  image:
-    repository: binwiederhier/ntfy
-    tag: "v2.11.0"
-  topic: alerts
-  volumes:
-    data:
-      size: 1Gi
-      storageClassName: longhorn
-      mountPath: /var/cache/ntfy
 
 # healthchecks.io dead-man switch: one DaemonSet, every node self-registers as its
 # own check via slug auto-provisioning (/ping/<key>/<slug>). PING_KEY comes from a
@@ -224,6 +207,11 @@ kube-prometheus-stack:
       replicas: 1
       priorityClassName: homelab-monitoring
       affinity: *workerAffinity
+      # Mounted at /etc/alertmanager/secrets/ntfy-alertmanager-token/ - the ntfy
+      # webhook's bearer token, sealed by ntfy/generate-secret.sh and reflected into
+      # this namespace (reflector annotations on that chart's sealed Secret).
+      secrets:
+        - ntfy-alertmanager-token
       resources:
         requests: { cpu: 10m, memory: 32Mi }
         limits: { cpu: 10m, memory: 32Mi }
@@ -255,8 +243,15 @@ kube-prometheus-stack:
         - name: "null"
         - name: ntfy
           webhook_configs:
-            - url: http://ntfy.monitoring:80/alerts/publish
+            # template=alertmanager is ntfy's built-in formatter (v2.14.0+) - firing/
+            # resolved alerts render as readable notifications instead of raw JSON.
+            # ntfy itself lives in its own chart/namespace (ntfy/) - see that chart
+            # for the server, auth and ingress.
+            - url: http://ntfy.ntfy:80/alerts?template=alertmanager
               send_resolved: true
+              http_config:
+                authorization:
+                  credentials_file: /etc/alertmanager/secrets/ntfy-alertmanager-token/TOKEN
 
   prometheus:
     prometheusSpec:
@@ -344,6 +339,9 @@ prometheus-blackbox-exporter:
 probes:
   - name: jellyfin
     url: "http://jellyfin.jellyfin:8096/health"
+    module: http_2xx
+  - name: ntfy
+    url: "http://ntfy.ntfy/v1/health"
     module: http_2xx
   - name: prowlarr
     url: "http://prowlarr-main.media:9696/ping"
