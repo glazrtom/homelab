@@ -1,0 +1,68 @@
+# Disk temperature + SMART health, dell (amd64) only - see values.yaml
+# smartctlExporter comment for why orangepi is excluded. Needs host /dev and root to
+# issue SMART ioctls, so it runs as a DaemonSet pinned to that one node rather than a
+# sidecar in any particular chart.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: smartctl-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: smartctl-exporter
+spec:
+  selector:
+    matchLabels:
+      app: smartctl-exporter
+  template:
+    metadata:
+      labels:
+        app: smartctl-exporter
+    spec:
+      priorityClassName: {{ .Values.priorityClassName }}
+      nodeSelector:
+        homelab/node-class: worker
+      hostPID: true
+      containers:
+        - name: smartctl-exporter
+          image: "{{ .Values.smartctlExporter.image.repository }}:{{ .Values.smartctlExporter.image.tag }}"
+          securityContext:
+            privileged: true
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.smartctlExporter.port }}
+          volumeMounts:
+            - name: dev
+              mountPath: /dev
+          resources:
+            {{- toYaml .Values.smartctlExporter.resources | nindent 12 }}
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartctl-exporter
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: smartctl-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.smartctlExporter.port }}
+{{- if .Values.global.monitoring.serviceMonitors }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: smartctl-exporter
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: smartctl-exporter
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.global.monitoring.interval.slow }}
+{{- end }}

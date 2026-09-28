@@ -26,12 +26,20 @@ prowlarr:
       size: 1Gi
       storageClassName: longhorn
       mountPath: /config
-  sidecarsTemplate: prowlarr.vpnContainer
+  sidecarsTemplate: prowlarr.sidecars
   extraEnvTemplate: media.authEnv
   resources:
     requests:
       cpu: 20m
       memory: 256Mi
+  exportarr:
+    image:
+      repository: ghcr.io/onedr0p/exportarr
+      tag: "v2.3.0"
+    port: 9707
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 50m, memory: 64Mi }
   vpn:
     image: qmcgaw/gluetun
     env:
@@ -66,6 +74,7 @@ radarr:
     external: true
     auth: true
   extraEnvTemplate: media.authEnv
+  sidecarsTemplate: media.exportarrContainer
   resources:
     requests:
       cpu: 20m
@@ -79,6 +88,14 @@ radarr:
     media:
       claimName: media-pvc
       mountPath: /media
+  exportarr:
+    image:
+      repository: ghcr.io/onedr0p/exportarr
+      tag: "v2.3.0"
+    port: 9707
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 50m, memory: 64Mi }
 
 sonarr:
   enabled: false
@@ -93,6 +110,7 @@ sonarr:
     external: true
     auth: true
   extraEnvTemplate: media.authEnv
+  sidecarsTemplate: media.exportarrContainer
   resources:
     requests:
       cpu: 20m
@@ -106,3 +124,11 @@ sonarr:
     media:
       claimName: media-pvc
       mountPath: /media
+  exportarr:
+    image:
+      repository: ghcr.io/onedr0p/exportarr
+      tag: "v2.3.0"
+    port: 9707
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 50m, memory: 64Mi }

@@ -1,20 +1,16 @@
 {{- if .Values.global.monitoring.serviceMonitors }}
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
-  name: longhorn
+  name: pihole-exporter
   namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   selector:
     matchLabels:
-      app: longhorn-manager
-  endpoints:
-    - port: manager
+      app: pihole
+  podMetricsEndpoints:
+    - port: metrics
       interval: {{ .Values.global.monitoring.interval.slow }}
-      metricRelabelings:
-        - sourceLabels: [__name__]
-          regex: "go_.*|process_.*"
-          action: drop
 {{- end }}

@@ -74,3 +74,14 @@ volumes:
 dns:
   loadBalancerIP: 10.0.0.200
   upstreams: "1.1.1.1;1.0.0.1"
+
+sidecarsTemplate: pihole.exporterContainer
+
+piholeExporter:
+  image:
+    repository: ekofr/pihole-exporter
+    tag: "v1.2.0"
+  port: 9617
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 32Mi }

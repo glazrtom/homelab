@@ -1,0 +1,223 @@
+# The curated alert set that replaces kube-prometheus-stack's ~150 defaultRules
+# (defaultRules.create: false in values.yaml) - each group below maps to a section of
+# .claude/plans/i-want-to-reenable-modular-snowglobe.md. All fire to Alertmanager's
+# "ntfy" receiver (values.yaml alertmanager.config) unless noted.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: monitoring-alert-rules
+  namespace: {{ .Values.namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  groups:
+    - name: homelab.nodes
+      rules:
+        - alert: NodeMemoryLow
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }} has less than 10% memory available"
+        - alert: NodeTemperatureHigh
+          expr: max by (instance) (node_hwmon_temp_celsius or node_thermal_zone_temp) > 80
+          for: 10m
+          labels: { severity: critical }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }} is running above 80°C"
+        - alert: NodeRootFilesystemLow
+          expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }}'s root filesystem is below 15% free"
+        - alert: NodeRebooted
+          expr: (time() - node_boot_time_seconds) < 900
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }} rebooted in the last 15 minutes"
+        - alert: NodeOOMKill
+          expr: increase(node_vmstat_oom_kill[15m]) > 0
+          labels: { severity: warning }
+          annotations:
+            summary: "The kernel OOM-killed a process on {{ "{{" }} $labels.instance {{ "}}" }}"
+        - alert: NodeClockSkew
+          expr: abs(node_timex_offset_seconds) > 0.5 or node_timex_sync_status == 0
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }}'s clock is unsynced or skewed - breaks OIDC/TLS"
+
+    - name: homelab.kubernetes
+      rules:
+        - alert: KubeNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "Node {{ "{{" }} $labels.node {{ "}}" }} is NotReady"
+        - alert: KubeNodePressure
+          expr: kube_node_status_condition{condition=~"MemoryPressure|DiskPressure|PIDPressure",status="true"} == 1
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "Node {{ "{{" }} $labels.node {{ "}}" }} reports {{ "{{" }} $labels.condition {{ "}}" }}"
+        - alert: KubeAPIServerDown
+          expr: up{job=~".*apiserver.*"} == 0
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: "The Kubernetes API server target is down"
+        - alert: KubeletDown
+          expr: up{job=~".*kubelet.*",metrics_path="/metrics"} == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "kubelet on {{ "{{" }} $labels.node {{ "}}" }} is down"
+        - alert: KubePodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} is crash-looping"
+        - alert: KubePodNotReady
+          expr: sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}) > 0
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} has not been Running for 15m"
+        - alert: KubeDeploymentReplicasMismatch
+          expr: kube_deployment_status_replicas_available != kube_deployment_spec_replicas
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Deployment {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.deployment {{ "}}" }} has fewer replicas available than desired"
+        - alert: KubeJobFailed
+          expr: kube_job_status_failed > 0
+          labels: { severity: warning }
+          annotations:
+            summary: "Job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.job_name {{ "}}" }} failed"
+        - alert: KubePersistentVolumeClaimPending
+          expr: kube_persistentvolumeclaim_status_phase{phase="Pending"} == 1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "PVC {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} has been Pending for 10m"
+
+    - name: homelab.apps
+      rules:
+        - alert: ContainerMemoryNearLimit
+          expr: |
+            container_memory_working_set_bytes{container!="",container!="POD"}
+              / on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory"}
+              > 0.9
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) is above 90% of its memory limit"
+        - alert: ContainerOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) was OOMKilled"
+        - alert: ContainerCPUThrottlingHigh
+          expr: |
+            (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m])
+              / on (namespace, pod, container) rate(container_cpu_cfs_periods_total{container!=""}[5m]))
+              > 0.25
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) is CPU-throttled more than 25% of the time"
+        - alert: ProbeDown
+          expr: probe_success{job!~".*edge.*"} == 0
+          for: 3m
+          labels: { severity: critical }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }} is not answering (blackbox probe failed)"
+        - alert: IngressHighErrorRate
+          expr: |
+            sum by (ingress, exported_namespace) (rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+              / sum by (ingress, exported_namespace) (rate(nginx_ingress_controller_requests[5m]))
+              > 0.05
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.ingress {{ "}}" }} is returning >5% 5xx responses"
+        - alert: IngressCertExpiringSoon
+          expr: (nginx_ingress_controller_ssl_expire_time_seconds - time()) < 14 * 86400
+          labels: { severity: warning }
+          annotations:
+            summary: "The TLS cert served by {{ "{{" }} $labels.host {{ "}}" }} expires in under 14 days"
+        - alert: ArgoCDAppUnhealthy
+          expr: argocd_app_info{health_status!="Healthy"} == 1
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} has been {{ "{{" }} $labels.health_status {{ "}}" }} for 30m"
+        - alert: ArgoCDAppOutOfSync
+          expr: argocd_app_info{sync_status="OutOfSync"} == 1
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} has been OutOfSync for 30m"
+
+    - name: homelab.storage
+      rules:
+        - alert: FilesystemReadOnly
+          expr: node_filesystem_readonly{fstype!="tmpfs"} == 1
+          labels: { severity: critical }
+          annotations:
+            summary: "{{ "{{" }} $labels.instance {{ "}}" }}'s {{ "{{" }} $labels.mountpoint {{ "}}" }} filesystem remounted read-only"
+        - alert: PVCUsageHigh
+          expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "PVC {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} is above 85% full"
+        - alert: LonghornVolumeDegraded
+          # robustness is a label, not the value (always 1) - see
+          # longhorn/templates/servicemonitor.yaml's target.
+          expr: longhorn_volume_robustness{robustness="degraded"} == 1
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is degraded (lost a replica)"
+        - alert: LonghornVolumeFaulted
+          expr: longhorn_volume_robustness{robustness="faulted"} == 1
+          labels: { severity: critical }
+          annotations:
+            summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is faulted"
+        - alert: LonghornBackupFailed
+          # No "age since last success" gauge exists upstream - Gatus's longhorn-daily
+          # heartbeat (gatus/values.yaml) already covers that as "no report arrived".
+          # This catches a backup that ran and errored, which the heartbeat alone won't.
+          expr: longhorn_backup_state{state="Error"} == 1
+          labels: { severity: warning }
+          annotations:
+            summary: "Longhorn backup {{ "{{" }} $labels.backup_name {{ "}}" }} of volume {{ "{{" }} $labels.backup_volume {{ "}}" }} failed"
+        - alert: SmartDiskFailing
+          expr: smartctl_device_smart_status == 0
+          labels: { severity: critical }
+          annotations:
+            summary: "Disk {{ "{{" }} $labels.device {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} is failing its own SMART health check"
+        - alert: SmartDiskTemperatureHigh
+          expr: smartctl_device_temperature > 55
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Disk {{ "{{" }} $labels.device {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} is above 55°C"
+
+    - name: homelab.meta
+      rules:
+        - alert: PrometheusTargetDown
+          expr: up == 0
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Scrape target {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }} has been down for 15m"
+        - alert: PrometheusTSDBNearRetentionSize
+          expr: prometheus_tsdb_storage_blocks_bytes / (8 * 1024 * 1024 * 1024) > 0.9
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "Prometheus's TSDB is above 90% of its 8GiB retentionSize cap"

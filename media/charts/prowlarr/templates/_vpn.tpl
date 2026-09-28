@@ -1,3 +1,11 @@
+{{/* Both prowlarr sidecars in one list - lib.deployment's sidecarsTemplate takes a
+single template name, so vpn + exportarr are chained here rather than each app
+setting sidecarsTemplate directly. */}}
+{{- define "prowlarr.sidecars" -}}
+{{ include "prowlarr.vpnContainer" . }}
+{{ include "media.exportarrContainer" . }}
+{{- end -}}
+
 {{/* gluetun sidecar; prowlarr's traffic egresses through the VPN. */}}
 {{- define "prowlarr.vpnContainer" -}}
 - name: vpn

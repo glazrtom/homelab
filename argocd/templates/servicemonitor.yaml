@@ -18,4 +18,10 @@ spec:
   endpoints:
     - port: metrics
       interval: {{ .Values.global.monitoring.interval.slow }}
+      # Go runtime/process noise, same as every other exporter - argocd_app_info and
+      # argocd_app_sync_total (used by the dashboards/alerts) are kept.
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "go_.*|process_.*"
+          action: drop
 {{- end }}

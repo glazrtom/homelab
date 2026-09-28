@@ -13,4 +13,8 @@ spec:
   podMetricsEndpoints:
     - portNumber: 3333
       interval: {{ .Values.global.monitoring.interval.slow }}
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "cloudflared_tunnel_(ha_connections|request_errors|total_requests)"
+          action: keep
 {{- end }}

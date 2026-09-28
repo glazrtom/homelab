@@ -15,4 +15,11 @@ spec:
   endpoints:
     - port: metrics
       interval: {{ .Values.global.monitoring.interval.fast }}
+      # Keep the requests/error/cert-expiry counters the curated dashboards use, the
+      # one request-duration histogram, and drop the rest (Go runtime metrics, other
+      # histograms) - the largest single source of ingress-nginx series otherwise.
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "nginx_ingress_controller_(requests|request_duration_seconds_bucket|ssl_expire_time_seconds)"
+          action: keep
 {{- end }}

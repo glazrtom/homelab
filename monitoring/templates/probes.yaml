@@ -1,0 +1,22 @@
+{{- if .Values.global.monitoring.serviceMonitors }}
+{{- $blackboxService := printf "%s-prometheus-blackbox-exporter:9115" .Release.Name }}
+{{- range .Values.probes }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  module: {{ .module }}
+  prober:
+    url: {{ $blackboxService }}
+  interval: {{ .interval | default $.Values.global.monitoring.interval.slow }}
+  targets:
+    staticConfig:
+      static:
+        - {{ .url }}
+{{- end }}
+{{- end }}

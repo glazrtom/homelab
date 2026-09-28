@@ -41,7 +41,7 @@ workerAffinity: &workerAffinity
 # from the chart's single root .Values.app/.Values.image/.Values.volumes, which
 # this chart already uses for Grafana's ingress above.
 ntfy:
-  replicas: 0
+  replicas: 1
   affinity: *workerAffinity
   image:
     repository: binwiederhier/ntfy
@@ -66,6 +66,14 @@ deadManSwitch:
 
 # --- upstream subchart overrides ------------------------------------------
 kube-prometheus-stack:
+  # The upstream ~150 alert rules and ~30 dashboards are the "clutter" this re-enable
+  # is deliberately dropping - our own curated set lives in
+  # templates/alert-rules.yaml and templates/dashboards/*.json instead (discovered by
+  # the grafana sidecar via the grafana_dashboard: "1" label, already the chart
+  # default - see grafana.sidecar.dashboards below).
+  defaultRules:
+    create: false
+
   # k3s runs the control plane inside one process with no separately-exposed
   # controller-manager/scheduler/proxy/etcd - without disabling these, the
   # matching KubeControllerManagerDown/KubeSchedulerDown/KubeProxyDown/etcd alerts
@@ -118,15 +126,25 @@ kube-prometheus-stack:
           action: drop
 
   kube-state-metrics:
-    replicas: 0
+    replicas: 1
     priorityClassName: homelab-monitoring
     affinity: *workerAffinity
+    # Only the object kinds §2/§3/§4 of the curated list actually use - default KSM
+    # also ships configmaps/secrets/leases/ingresses/etc, which are pure clutter here.
+    collectors:
+      - nodes
+      - pods
+      - deployments
+      - statefulsets
+      - daemonsets
+      - jobs
+      - persistentvolumeclaims
     prometheus:
       monitor:
         interval: 60s
 
   nodeExporter:
-    enabled: false
+    enabled: true
 
   prometheus-node-exporter:
     priorityClassName: homelab-monitoring
@@ -139,9 +157,18 @@ kube-prometheus-stack:
       - --collector.hwmon
       - --collector.thermal_zone
       - --collector.cpufreq
+      # PSI needs a 4.20+ kernel with CONFIG_PSI - on by default on both nodes' kernels;
+      # harmless no-op metric absence if a future kernel lacks it.
+      - --collector.pressure
     prometheus:
       monitor:
         interval: 15s
+        # Go runtime metrics from the exporter's own process, plus scrape-meta series -
+        # noise on every target, node-exporter included.
+        metricRelabelings:
+          - sourceLabels: [__name__]
+            regex: "go_.*|process_.*|node_scrape_collector_.*"
+            action: drop
 
   # Self-signed cert + patch Job (default, no cert-manager in this cluster) - the
   # Job patches the webhook's caBundle at install/upgrade time, same reason
@@ -152,9 +179,14 @@ kube-prometheus-stack:
     affinity: *workerAffinity
 
   grafana:
-    replicas: 0
+    replicas: 1
     priorityClassName: homelab-monitoring
     affinity: *workerAffinity
+    # The upstream dashboard set (~30 dashboards covering CoreDNS internals,
+    # etcd, per-resource apiserver breakdowns, ...) - replaced by
+    # templates/dashboards/*.json, picked up by the sidecar below via the
+    # grafana_dashboard: "1" ConfigMap label (chart default, ALL namespaces).
+    defaultDashboardsEnabled: false
     # Ingress is rendered by this chart's own templates/ingress.yaml (lib.ingress),
     # gated by Authentik - not the subchart's own ingress (which knows nothing
     # about the two IngressClasses or forward-auth).
@@ -181,7 +213,7 @@ kube-prometheus-stack:
 
   alertmanager:
     alertmanagerSpec:
-      replicas: 0
+      replicas: 1
       priorityClassName: homelab-monitoring
       affinity: *workerAffinity
       resources:
@@ -232,7 +264,7 @@ kube-prometheus-stack:
       # is mTLS-protected by kube-rbac-proxy in this chart version - scraping it
       # needs a client cert this chart doesn't yet provision. Revisit once that's
       # worked out rather than shipping a target that silently never comes up.
-      replicas: 0
+      replicas: 1
       affinity: *workerAffinity
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
@@ -266,3 +298,94 @@ kube-prometheus-stack:
       # resolution for the whole 31d retention regardless. ruleSelectorNilUsesHelmValues
       # (default true) already matches templates/recording-rules.yaml's
       # release: {{ .Release.Name }} label - no override needed here.
+
+# blackbox-exporter: replaces Gatus's up/down checks (gatus/values.yaml's endpoints
+# list) as Prometheus targets/alerts, since Gatus is going away. Gatus itself is left
+# running untouched until that happens - this doesn't duplicate its email alerts, it
+# just gives the same up/down signal a home in Grafana/Alertmanager too.
+prometheus-blackbox-exporter:
+  priorityClassName: homelab-monitoring
+  affinity: *workerAffinity
+  # Chart default (releaseLabel: false) would make Prometheus's
+  # serviceMonitorSelectorNilUsesHelmValues: false above still pick this up fine -
+  # no ServiceMonitor of our own needed, the Probe CRs below carry their own
+  # target list and talk to this exporter directly.
+  config:
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          preferred_ip_protocol: "ip4"
+      tcp_connect:
+        prober: tcp
+        timeout: 5s
+      dns_udp:
+        prober: dns
+        timeout: 5s
+        dns:
+          query_name: "pi.hole"
+          query_type: "A"
+          transport_protocol: "udp"
+          preferred_ip_protocol: "ip4"
+
+# One Probe CR per endpoint, rendered by templates/probes.yaml. url/module mirror
+# gatus/values.yaml's endpoints list; keep the two files in step by hand until Gatus
+# is removed, at which point this becomes the only copy.
+probes:
+  - name: jellyfin
+    url: "http://jellyfin.jellyfin:8096/health"
+    module: http_2xx
+  - name: prowlarr
+    url: "http://prowlarr-main.media:9696/ping"
+    module: http_2xx
+  - name: radarr
+    url: "http://radarr-personal.media:7878/ping"
+    module: http_2xx
+  - name: sonarr
+    url: "http://sonarr-personal.media:8989/ping"
+    module: http_2xx
+  - name: transmission
+    url: "http://transmission.transmission:9091/transmission/web/"
+    module: http_2xx
+  - name: pihole-web
+    url: "http://pihole-web.pihole/admin/login"
+    module: http_2xx
+  - name: pihole-dns
+    url: "pihole-dns-tcp-svc.pihole:53"
+    module: tcp_connect
+  - name: pihole-dns-resolves
+    url: "pihole-dns-udp-svc.pihole:53"
+    module: dns_udp
+  - name: authentik
+    url: "http://authentik-server.authentik/-/health/live/"
+    module: http_2xx
+  - name: argocd
+    url: "http://argocd-server.argocd/healthz"
+    module: http_2xx
+  - name: longhorn
+    url: "http://longhorn-frontend.longhorn-system"
+    module: http_2xx
+  - name: rallly
+    url: "http://rallly.rallly"
+    module: http_2xx
+  - name: auth-edge
+    url: "https://auth.glazrtom.cz/-/health/live/"
+    module: http_2xx
+    interval: 2m
+
+# smartctl-exporter: disk temperature + SMART health, dell (amd64) only. orangepi's
+# root disk is an eMMC/SD card SBC boot device, not a SATA/NVMe disk SMART reports on
+# meaningfully, and upstream prometheus-community/smartctl-exporter has no versioned
+# arm64 release (only its floating, unpinnable "master" tag does) - see
+# https://github.com/prometheus-community/smartctl_exporter/issues/267. Revisit if
+# that ships a versioned multi-arch build.
+smartctlExporter:
+  image:
+    repository: prometheuscommunity/smartctl-exporter
+    tag: "v0.14.0"
+  port: 9633
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 32Mi }

@@ -1,0 +1,17 @@
+# Our curated dashboards (5, ../dashboards/*.json) - discovered by the grafana
+# sidecar via the grafana_dashboard: "1" label (kube-prometheus-stack default,
+# searches ALL namespaces). Replaces the ~30 upstream dashboards
+# (grafana.defaultDashboardsEnabled: false in values.yaml).
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "monitoring-dashboard-%s" (base $path | trimSuffix ".json") }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  {{ base $path }}: |
+    {{- $.Files.Get $path | nindent 4 }}
+{{- end }}
