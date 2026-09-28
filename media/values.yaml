@@ -1,6 +1,16 @@
 global:
   imagePullPolicy: IfNotPresent
   namespace: media
+  # Shared across prowlarr/radarr/sonarr's exportarr sidecar (media/templates/_exportarr.tpl) -
+  # global is the only values scope subcharts see besides their own.
+  exportarr:
+    image:
+      repository: ghcr.io/onedr0p/exportarr
+      tag: "v2.3.0"
+    port: 9707
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 50m, memory: 64Mi }
 
 defineGlobalPvc:
   enabled: false
@@ -32,14 +42,6 @@ prowlarr:
     requests:
       cpu: 20m
       memory: 256Mi
-  exportarr:
-    image:
-      repository: ghcr.io/onedr0p/exportarr
-      tag: "v2.3.0"
-    port: 9707
-    resources:
-      requests: { cpu: 10m, memory: 64Mi }
-      limits: { cpu: 50m, memory: 64Mi }
   vpn:
     image: qmcgaw/gluetun
     env:
@@ -88,14 +90,6 @@ radarr:
     media:
       claimName: media-pvc
       mountPath: /media
-  exportarr:
-    image:
-      repository: ghcr.io/onedr0p/exportarr
-      tag: "v2.3.0"
-    port: 9707
-    resources:
-      requests: { cpu: 10m, memory: 64Mi }
-      limits: { cpu: 50m, memory: 64Mi }
 
 sonarr:
   enabled: false
@@ -124,11 +118,3 @@ sonarr:
     media:
       claimName: media-pvc
       mountPath: /media
-  exportarr:
-    image:
-      repository: ghcr.io/onedr0p/exportarr
-      tag: "v2.3.0"
-    port: 9707
-    resources:
-      requests: { cpu: 10m, memory: 64Mi }
-      limits: { cpu: 50m, memory: 64Mi }
