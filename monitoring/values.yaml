@@ -73,12 +73,12 @@ kube-prometheus-stack:
   kubeApiServer:
     serviceMonitor:
       interval: 60s
-      # apiserver_request_duration_seconds_bucket alone is a large share of
-      # apiserver series on a single-node cluster; drop the buckets, keep the
-      # _count/_sum/_total gauges that alerts and dashboards actually use.
+      # apiserver/etcd histogram buckets are the large majority of apiserver series on
+      # a single-node cluster; drop every _bucket, keep the _count/_sum/_total gauges
+      # that alerts and dashboards actually use (only apiserver_request_total).
       metricRelabelings:
         - sourceLabels: [__name__]
-          regex: "apiserver_request_duration_seconds_bucket|apiserver_response_sizes_bucket"
+          regex: ".*_bucket"
           action: drop
 
   coreDns:
@@ -99,9 +99,13 @@ kube-prometheus-stack:
   kubelet:
     serviceMonitor:
       interval: 15s
+      # k3s's kubelet /metrics endpoint re-exports the whole embedded apiserver/etcd
+      # registry (it runs the control plane in the same process) - duplicates the
+      # apiserver job's own series and dominates head cardinality on a 2-node
+      # cluster. kubelet_volume_stats_* (PVCUsageHigh) isn't touched by this regex.
       metricRelabelings:
         - sourceLabels: [__name__]
-          regex: "go_.*|grpc_server_handled_total"
+          regex: "go_.*|grpc_server_handled_total|apiserver_.*|etcd_.*|workqueue_.*|rest_client_.*"
           action: drop
       cAdvisorMetricRelabelings:
         - sourceLabels: [__name__]
@@ -214,7 +218,7 @@ kube-prometheus-stack:
         - ntfy-alertmanager-token
       resources:
         requests: { cpu: 10m, memory: 32Mi }
-        limits: { cpu: 10m, memory: 32Mi }
+        limits: { cpu: 50m, memory: 32Mi }
       storage:
         volumeClaimTemplate:
           spec:

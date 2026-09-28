@@ -1,0 +1,27 @@
+{{- if .Values.global.monitoring.serviceMonitors }}
+# Additive to the upstream chart's own NetworkPolicies (longhorn.networkPolicies.enabled) -
+# those only allow ingress to longhorn-manager from other Longhorn components, so
+# Prometheus's scrape (see servicemonitor.yaml) gets connection-refused without this.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-manager-metrics
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: longhorn-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9500
+{{- end }}

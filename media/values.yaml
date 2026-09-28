@@ -10,7 +10,7 @@ global:
     port: 9707
     resources:
       requests: { cpu: 10m, memory: 64Mi }
-      limits: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 100m, memory: 64Mi }
 
 defineGlobalPvc:
   enabled: false
