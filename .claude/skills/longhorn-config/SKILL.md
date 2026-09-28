@@ -86,9 +86,11 @@ follows wherever that pod lands. The share-manager's placement is controlled by 
 string, parsed from plain Kubernetes node labels, not a Longhorn disk/node tag, so it can
 reuse an existing label like `homelab/gpu: intel` (see `jellyfin/values.yaml`'s
 `nodeSelector`) instead of inventing a new one. StorageClass `parameters` are immutable,
-so the SC carries `argocd.argoproj.io/sync-options: Replace=true` to let ArgoCD
-delete-and-recreate it in place; bound PVs/PVCs reference the class by name only and are
-unaffected. Moving an already-running share-manager to match a new selector needs a
+so the SC carries `argocd.argoproj.io/sync-options: Replace=true,Force=true` to let
+ArgoCD delete-and-recreate it — `Replace=true` alone is still an in-place
+`kubectl replace`/PUT and fails the same "field is immutable" error a plain sync does;
+`Force` is what makes it `kubectl replace --force`. Bound PVs/PVCs reference the class
+by name only and are unaffected. Moving an already-running share-manager to match a new selector needs a
 one-time `kubectl delete pod -n longhorn-system share-manager-<volume>` after the sync —
 Longhorn recreates it under the new constraint, and `best-effort` then drops the old
 replica once the new one is healthy.

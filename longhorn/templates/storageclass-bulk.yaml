@@ -6,7 +6,7 @@ metadata:
     # parameters is immutable - a plain ArgoCD sync can't patch it in place, so let
     # ArgoCD delete-and-recreate the SC instead. Bound PVs/PVCs reference the class
     # by name only and are unaffected.
-    argocd.argoproj.io/sync-options: Replace=true
+    argocd.argoproj.io/sync-options: Replace=true,Force=true
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 reclaimPolicy: Retain
