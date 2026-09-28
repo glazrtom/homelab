@@ -163,6 +163,13 @@ kube-prometheus-stack:
     prometheus:
       monitor:
         interval: 15s
+        # Default ServiceMonitor SD leaves `instance` as the scrape target's
+        # address (node-exporter runs hostNetwork, so that's the node's bare
+        # IP) - every node/CPU/disk panel in nodes.json legends by {{instance}},
+        # so relabel it to the actual node name instead.
+        relabelings:
+          - sourceLabels: [__meta_kubernetes_pod_node_name]
+            targetLabel: instance
         # Go runtime metrics from the exporter's own process, plus scrape-meta series -
         # noise on every target, node-exporter included.
         metricRelabelings:
