@@ -12,3 +12,7 @@ k3s_node_labels: []
 # Extra kubelet args, e.g. system-reserved on the control-plane node so the scheduler
 # accounts for k3s/ArgoCD's own footprint. Empty by default.
 k3s_kubelet_args: []
+
+# Unused images are removed after this long, regardless of disk usage (kubelet
+# otherwise only image-GCs once the image filesystem crosses 85% full).
+k3s_image_maximum_gc_age: 168h

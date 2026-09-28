@@ -16,6 +16,24 @@
     mode: "0644"
   notify: "{{ 'restart k3s-agent' if 'agent' in group_names else 'restart k3s' }}"
 
+# Kubelet config fields with no CLI/config.yaml equivalent (e.g. imageMaximumGCAge)
+# go here instead - k3s writes its own defaults to 00-k3s-defaults.conf in this
+# directory and merges any other *.conf files in lexical order.
+- name: Ensure the kubelet config drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/agent/etc/kubelet.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Write the kubelet image GC drop-in
+  become: true
+  ansible.builtin.template:
+    src: kubelet-image-gc.conf.j2
+    dest: /var/lib/rancher/k3s/agent/etc/kubelet.conf.d/50-image-gc.conf
+    mode: "0644"
+  notify: "{{ 'restart k3s-agent' if 'agent' in group_names else 'restart k3s' }}"
+
 - name: Download and install k3s (server)
   become: true
   ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" INSTALL_K3S_EXEC="{{ k3s_install_exec }}" sh -
