@@ -283,7 +283,7 @@ kube-prometheus-stack:
       priorityClassName: homelab-monitoring
       resources:
         requests: { cpu: 200m, memory: 512Mi }
-        limits: { cpu: 200m, memory: 512Mi }
+        limits: { cpu: 500m, memory: 512Mi }
       # Time bound is generous on purpose - it isn't the disk guard.
       # retentionSize is: it caps growth before the 10Gi PVC below fills, even if
       # the active-series estimate the scrape/relabel config above is tuned

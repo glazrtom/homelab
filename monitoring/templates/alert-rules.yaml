@@ -120,10 +120,16 @@ spec:
           annotations:
             summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) was OOMKilled"
         - alert: ContainerCPUThrottlingHigh
+          # A mostly-idle container (<1 CFS period/s runnable, i.e. active <10% of wall
+          # time - a once-a-minute curl heartbeat, a low-frequency scrape) clips its one
+          # burst against almost any limit, reading as "100% throttled" for a cost that's
+          # actually negligible. Gate on the container actually being busy.
           expr: |
             (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m])
               / on (namespace, pod, container) rate(container_cpu_cfs_periods_total{container!=""}[5m]))
               > 0.25
+            and on (namespace, pod, container)
+              rate(container_cpu_cfs_periods_total{container!=""}[5m]) > 1
           for: 15m
           labels: { severity: warning }
           annotations:
