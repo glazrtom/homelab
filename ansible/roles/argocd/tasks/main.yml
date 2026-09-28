@@ -21,7 +21,7 @@
 - name: Disable ArgoCD internal TLS
   kubernetes.core.k8s:
     state: present
-    src: "{{ path_repo_root }}/argocd/argocd-disable-internal-tls.yaml"
+    src: "{{ path_repo_root }}/argocd/templates/cmd-params-cm.yaml"
     kubeconfig: "{{ kubeconfig_path }}"
   register: argocd_cmd_params
 
