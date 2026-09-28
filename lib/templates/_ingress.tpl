@@ -15,6 +15,9 @@ There is no third, implicit state - lib.ingress fails the template if auth is un
 {{- if not (hasKey $ing "auth") }}
 {{- fail (printf "%s: set ingress.auth - true (gated; needs a gatedApps entry in authentik/values.yaml) or false (deliberately open). Both ingress classes deny by default." (include "lib.fullname" .)) }}
 {{- end }}
+{{- if and $ing.auth (hasKey $ing "rateLimit") }}
+{{- fail (printf "%s: ingress.rateLimit only applies when ingress.auth is false - a gated host doesn't need the extra layer" (include "lib.fullname" .)) }}
+{{- end }}
 {{- $svc := include "lib.serviceName" . }}
 {{- $port := include "lib.servicePort" . }}
 {{- $extHost := $ing.externalHost | default (printf "%s.%s" .Values.app.domainPrefix .Values.global.domain.public.suffix) }}
@@ -97,12 +100,10 @@ nginx.ingress.kubernetes.io/enable-global-auth: "false"
 
 {{/*
 Opt-in per-IP rate limiting, external Ingress only - the LAN is not this threat model.
-Explicit ingress.rateLimit wins regardless of ingress.auth (a gated host can still have
-unauthenticated paths carved out by skipPathRegex in authentik/values.yaml, which need
-their own limiter - see ntfy/values.yaml); unset + ingress.auth: false gets a
-conservative default so an open public host is never limit-less; ingress.rateLimit:
-false disables it outright (needed for hosts like Authentik's own, whose login flow
-serves every gated app's assets and would break under a low cap).
+Explicit ingress.rateLimit wins; unset + ingress.auth: false gets a conservative default
+so an open public host is never limit-less; ingress.rateLimit: false disables it
+outright (needed for hosts like Authentik's own, whose login flow serves every gated
+app's assets and would break under a low cap).
 */}}
 {{- define "lib.rateLimitDefault" -}}
 rps: 20

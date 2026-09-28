@@ -14,7 +14,6 @@ ntfy.sh, which forwards to APNs - see docs.ntfy.sh/config.
     "NTFY_AUTH_DEFAULT_ACCESS" "deny-all"
     "NTFY_AUTH_ACCESS" "alertmanager:alerts:wo"
     "NTFY_UPSTREAM_BASE_URL" "https://ntfy.sh"
-    "NTFY_WEB_ROOT" .Values.webRoot
   )
   "secretEnv" (dict
     "NTFY_AUTH_USERS" (dict "name" "ntfy-auth" "key" "NTFY_AUTH_USERS")
