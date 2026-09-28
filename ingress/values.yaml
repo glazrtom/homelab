@@ -11,12 +11,22 @@ chart:
 controllers:
   internal:
     configTemplate: ingress.internalConfig
+    # LoadBalancer Service: routes only to the local node's pod, so MetalLB only
+    # advertises 10.0.0.150 from a node with a ready replica, and a dead node's
+    # stale Endpoints entry can never blackhole traffic to it.
+    externalTrafficPolicy: Local
   external:
     configTemplate: ingress.externalConfig
     # A real controller.* value, rendered as a sibling of controller.config in
     # helmchart.yaml - nested inside config: it would silently be ignored.
     proxySetHeaders:
       X-Forwarded-Proto: "$real_scheme"
+
+# Two replicas, one per node (required anti-affinity), so either node can go down
+# without losing ingress. maxSurge: 0 avoids a third, unschedulable pod during
+# rollouts; the PDB (rendered once replicaCount > 1) keeps one replica up through a
+# voluntary drain.
+replicaCount: 2
 
 # Consumed by helmchart.yaml on both controllers - request/5xx/latency per host
 # for monitoring/templates/servicemonitors.yaml's ingress-nginx ServiceMonitor.

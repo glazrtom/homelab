@@ -16,6 +16,21 @@ spec:
         name: {{ $cls.className }}
         default: false
       ingressClass: {{ $cls.className }}
+      replicaCount: {{ $.Values.replicaCount }}
+      minAvailable: 1
+      updateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $cls.className }}
+                  app.kubernetes.io/component: controller
 {{- if $.Values.metrics.enabled }}
       metrics:
         enabled: true
@@ -34,6 +49,9 @@ spec:
           metallb.universe.tf/loadBalancerIPs: {{ $cls.loadBalancerIP | quote }}
 {{- else }}
         type: ClusterIP
+{{- end }}
+{{- if $c.externalTrafficPolicy }}
+        externalTrafficPolicy: {{ $c.externalTrafficPolicy }}
 {{- end }}
 {{- if $c.configTemplate }}
       config:
