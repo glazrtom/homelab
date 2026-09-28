@@ -47,10 +47,27 @@ backup:
     schedule: "30 3 * * *"
     windowHours: 26
 
+# PostSync hook (replica-enforcer-job.yaml) that re-applies
+# longhorn.persistence.defaultClassReplicaCount to every volume the `longhorn` class
+# already provisioned (identified by the protected RecurringJobSelector group below) on
+# every sync of this chart - see the "Replica count is not retroactive" section of the
+# longhorn-config skill for why this can't just live on the PVC or StorageClass.
+replicaEnforcer:
+  enabled: true
+  image:
+    repository: alpine/k8s
+    tag: "1.36.2"
+
 class:
   bulk:
     name: longhorn-bulk
     replicaCount: 1
+    # Pins the RWX share-manager pod (and, via dataLocality: best-effort on the
+    # volume, its replica) to dell - same label as jellyfin/values.yaml's
+    # nodeSelector. Format is Longhorn's own "key:value" node-selector syntax,
+    # not a YAML map - it's parsed by longhorn-manager's types.UnmarshalNodeSelector
+    # from k8s node labels, unrelated to Longhorn's disk/node tags.
+    shareManagerNodeSelector: "homelab/gpu:intel"
 
 # --- upstream subchart overrides ------------------------------------------
 # Most of these exist only to undo the upstream chart's 3-node assumptions.

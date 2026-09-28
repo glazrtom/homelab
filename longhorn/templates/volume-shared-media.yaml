@@ -9,7 +9,8 @@ spec:
   accessMode: rwx
   frontend: blockdev
   staleReplicaTimeout: 30
-  # Lets Longhorn build a replica on whichever node ends up running the engine/share-manager
-  # and drop the one left behind, instead of requiring a manual replica move. Longhorn
-  # currently picks the share-manager's node itself - there's no selector to pin it.
+  # The share-manager pod is pinned to dell via the longhorn-bulk StorageClass's
+  # shareManagerNodeSelector (storageclass-bulk.yaml). best-effort then has Longhorn
+  # build this volume's replica on that same node and drop the one left behind,
+  # instead of requiring a manual replica move.
   dataLocality: best-effort

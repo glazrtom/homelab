@@ -1,0 +1,43 @@
+# Longhorn only reads a StorageClass's numberOfReplicas at PVC provisioning time and
+# never reconciles it back onto already-provisioned volumes, and its CSI driver doesn't
+# implement ControllerModifyVolume - so a StorageClass edit alone leaves existing volumes
+# on their old count forever, and a PVC has nowhere to carry the desired count either.
+# Runs as a PostSync hook (same pattern as authentik's job-blueprint-apply.yaml) rather
+# than a recurring CronJob: it only needs to act when this chart's desired state
+# actually changes, not poll on a schedule.
+{{- if .Values.replicaEnforcer.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: replica-enforcer
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      serviceAccountName: replica-enforcer
+      restartPolicy: Never
+      containers:
+        - name: enforce
+          image: {{ .Values.replicaEnforcer.image.repository }}:{{ .Values.replicaEnforcer.image.tag }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              WANT={{ .Values.longhorn.persistence.defaultClassReplicaCount }}
+              kubectl get volumes.longhorn.io -n {{ .Values.namespace }} \
+                -l recurring-job-group.longhorn.io/protected=enabled \
+                -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.numberOfReplicas}{"\n"}{end}' \
+              | while IFS=$'\t' read -r name have; do
+                  [ -z "$name" ] && continue
+                  if [ "$have" != "$WANT" ]; then
+                    echo "patching $name: numberOfReplicas $have -> $WANT"
+                    kubectl patch volumes.longhorn.io "$name" -n {{ .Values.namespace }} \
+                      --type merge -p "{\"spec\":{\"numberOfReplicas\":$WANT}}"
+                  fi
+                done
+{{- end }}

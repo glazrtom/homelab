@@ -51,6 +51,48 @@ Also note `backupBlockSize` is immutable per volume (fixed at creation), so chan
 `longhorn.defaultSettings.defaultBackupBlockSize` only affects volumes created
 afterward, never retroactively resizing existing ones.
 
+## Replica count is not retroactive, and PVCs can't carry it
+
+Longhorn reads a StorageClass's `numberOfReplicas` only when it provisions a new volume
+for a PVC; it never reconciles that setting back onto volumes already provisioned under
+the class, and its CSI driver doesn't implement `ControllerModifyVolume`
+(`VolumeAttributesClass`), so a PVC spec has no field for this either. Bumping
+`longhorn.persistence.defaultClassReplicaCount` (or a class's `numberOfReplicas`
+parameter) in git only takes effect for PVCs created from then on — existing volumes are
+silently left on their old count, which is easy to miss since the Volume CR's "Node"
+column shows where it's attached (next to the pod), not how many replicas it has or
+where they are. `longhorn/templates/replica-enforcer-job.yaml` (+ `replica-enforcer-rbac.yaml`, gated by
+`replicaEnforcer.enabled`) closes this gap for the `longhorn` class: an ArgoCD
+`PostSync` hook Job (same pattern as `authentik/templates/job-blueprint-apply.yaml`,
+`hook-delete-policy: BeforeHookCreation`) that re-patches every volume in the
+`protected` RecurringJobSelector group to `longhorn.persistence.defaultClassReplicaCount`
+on every sync of the chart, so the desired count stays enforced from git instead of a
+one-off `kubectl patch`. A hook rather than a recurring CronJob deliberately: this is a
+one-time migration concern (new PVCs already get the right count straight from the
+StorageClass at creation), not continuous drift correction, so it only needs to act when
+the chart's desired state actually changes. `longhorn-bulk` volumes (Prometheus,
+shared-media) aren't in that group and are untouched. The same limitation applies to any
+other per-volume Longhorn setting a StorageClass parameter sets — it also isn't
+retroactive.
+
+## Pinning the shared-media replica/share-manager to a node
+
+`shared-media` (`longhorn/templates/volume-shared-media.yaml`) is RWX, served over NFS
+by a `share-manager` pod, and set to `dataLocality: best-effort` so its one replica
+follows wherever that pod lands. The share-manager's placement is controlled by the
+`longhorn-bulk` StorageClass's `shareManagerNodeSelector` parameter
+(`longhorn/templates/storageclass-bulk.yaml`, value in
+`class.bulk.shareManagerNodeSelector`) — this is Longhorn's own `"key:value"` node-selector
+string, parsed from plain Kubernetes node labels, not a Longhorn disk/node tag, so it can
+reuse an existing label like `homelab/gpu: intel` (see `jellyfin/values.yaml`'s
+`nodeSelector`) instead of inventing a new one. StorageClass `parameters` are immutable,
+so the SC carries `argocd.argoproj.io/sync-options: Replace=true` to let ArgoCD
+delete-and-recreate it in place; bound PVs/PVCs reference the class by name only and are
+unaffected. Moving an already-running share-manager to match a new selector needs a
+one-time `kubectl delete pod -n longhorn-system share-manager-<volume>` after the sync —
+Longhorn recreates it under the new constraint, and `best-effort` then drops the old
+replica once the new one is healthy.
+
 ## Deletion protection and volume retirement
 
 Every rendered PV/PVC carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
