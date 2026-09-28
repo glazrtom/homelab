@@ -1,0 +1,54 @@
+{{- if .Values.shareManagerPlacement.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: share-manager-placement
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: share-manager-placement
+  namespace: {{ .Values.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: share-manager-placement
+  namespace: {{ .Values.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: share-manager-placement
+    namespace: {{ .Values.namespace }}
+roleRef:
+  kind: Role
+  name: share-manager-placement
+  apiGroup: rbac.authorization.k8s.io
+---
+# Node.Get/List is cluster-scoped, unlike the Role above.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: share-manager-placement-nodes
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: share-manager-placement-nodes
+subjects:
+  - kind: ServiceAccount
+    name: share-manager-placement
+    namespace: {{ .Values.namespace }}
+roleRef:
+  kind: ClusterRole
+  name: share-manager-placement-nodes
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

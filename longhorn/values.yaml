@@ -47,6 +47,12 @@ backup:
     schedule: "30 3 * * *"
     windowHours: 26
 
+# Image shared by the PostSync hook Jobs below (kubectl + bash is all either needs).
+hooks:
+  image:
+    repository: alpine/k8s
+    tag: "1.36.2"
+
 # PostSync hook (replica-enforcer-job.yaml) that re-applies
 # longhorn.persistence.defaultClassReplicaCount to every volume the `longhorn` class
 # already provisioned (identified by the protected RecurringJobSelector group below) on
@@ -54,9 +60,15 @@ backup:
 # longhorn-config skill for why this can't just live on the PVC or StorageClass.
 replicaEnforcer:
   enabled: true
-  image:
-    repository: alpine/k8s
-    tag: "1.36.2"
+
+# PostSync hook (share-manager-placement-job.yaml) that deletes the shared-media
+# share-manager pod when it isn't running on a node matching
+# class.bulk.shareManagerNodeSelector, so Longhorn recreates it there - the
+# StorageClass parameter only steers where a share-manager pod is *created*, it
+# doesn't move an already-running one. See "Pinning the shared-media
+# replica/share-manager" in the longhorn-config skill.
+shareManagerPlacement:
+  enabled: true
 
 class:
   bulk:

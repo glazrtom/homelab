@@ -1,0 +1,46 @@
+# class.bulk.shareManagerNodeSelector only steers where Longhorn *creates* a
+# share-manager pod - it has no effect on one already running elsewhere. This hook
+# deletes shared-media's share-manager pod when it's not on a matching node, so
+# Longhorn recreates it there; a no-op once it's already correctly placed.
+{{- if .Values.shareManagerPlacement.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: share-manager-placement
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      serviceAccountName: share-manager-placement
+      restartPolicy: Never
+      containers:
+        - name: enforce
+          image: {{ .Values.hooks.image.repository }}:{{ .Values.hooks.image.tag }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              # Longhorn's own node-selector syntax ("k:v;k2:v2") -> a kubectl label
+              # selector ("k=v,k2=v2").
+              SELECTOR="{{ .Values.class.bulk.shareManagerNodeSelector | replace ":" "=" | replace ";" "," }}"
+              POD="share-manager-{{ .Values.global.sharedMedia.name }}"
+
+              NODE="$(kubectl get pod "$POD" -n {{ .Values.namespace }} -o jsonpath='{.spec.nodeName}' 2>/dev/null || true)"
+              if [ -z "$NODE" ]; then
+                echo "$POD not found, nothing to do"
+                exit 0
+              fi
+
+              MATCHING_NODES="$(kubectl get nodes -l "$SELECTOR" -o jsonpath='{.items[*].metadata.name}')"
+              if printf '%s\n' $MATCHING_NODES | grep -qx "$NODE"; then
+                echo "$POD is on $NODE, which matches selector $SELECTOR - nothing to do"
+              else
+                echo "$POD is on $NODE, which doesn't match selector $SELECTOR ($MATCHING_NODES) - deleting so Longhorn recreates it there"
+                kubectl delete pod "$POD" -n {{ .Values.namespace }}
+              fi
+{{- end }}

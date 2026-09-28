@@ -23,7 +23,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: enforce
-          image: {{ .Values.replicaEnforcer.image.repository }}:{{ .Values.replicaEnforcer.image.tag }}
+          image: {{ .Values.hooks.image.repository }}:{{ .Values.hooks.image.tag }}
           command: ["/bin/bash", "-c"]
           args:
             - |

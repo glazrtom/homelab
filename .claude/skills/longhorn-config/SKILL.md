@@ -90,10 +90,15 @@ so the SC carries `argocd.argoproj.io/sync-options: Replace=true,Force=true` to 
 ArgoCD delete-and-recreate it — `Replace=true` alone is still an in-place
 `kubectl replace`/PUT and fails the same "field is immutable" error a plain sync does;
 `Force` is what makes it `kubectl replace --force`. Bound PVs/PVCs reference the class
-by name only and are unaffected. Moving an already-running share-manager to match a new selector needs a
-one-time `kubectl delete pod -n longhorn-system share-manager-<volume>` after the sync —
-Longhorn recreates it under the new constraint, and `best-effort` then drops the old
-replica once the new one is healthy.
+by name only and are unaffected. `shareManagerNodeSelector` only steers where Longhorn
+*creates* a share-manager pod — changing it has no effect on one already running
+elsewhere, so a plain SC sync alone won't move `shared-media`.
+`longhorn/templates/share-manager-placement-job.yaml` (+ `-rbac.yaml`, gated by
+`shareManagerPlacement.enabled`) is a second `PostSync` hook alongside
+`replica-enforcer-job.yaml` that deletes the share-manager pod when it isn't on a node
+matching the selector; a no-op once it's already placed correctly. Longhorn then
+recreates the pod under the new constraint, and `best-effort` drops the old replica once
+the new one is healthy.
 
 ## Deletion protection and volume retirement
 
