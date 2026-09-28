@@ -1,7 +1,7 @@
 namespace: argocd
 resources:
   - namespace.yaml
-  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.5/manifests/install.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.9/manifests/install.yaml
 
 # The upstream install manifest ships no requests/limits on any workload - on a
 # 2-node homelab that lets one component starve the scheduler's view of the rest.
