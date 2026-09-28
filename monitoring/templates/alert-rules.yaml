@@ -106,8 +106,12 @@ spec:
     - name: homelab.apps
       rules:
         - alert: ContainerMemoryNearLimit
+          # max by(...) collapses cAdvisor's duplicate series for a restarted
+          # container (old + new cgroup share namespace/pod/container for up to
+          # one scrape interval) - otherwise the one-to-one `on (...)` join errors
+          # with "many-to-many matching not allowed" for the whole rule group.
           expr: |
-            container_memory_working_set_bytes{container!="",container!="POD"}
+            max by (namespace, pod, container) (container_memory_working_set_bytes{container!="",container!="POD"})
               / on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory"}
               > 0.9
           for: 15m
@@ -125,11 +129,11 @@ spec:
           # burst against almost any limit, reading as "100% throttled" for a cost that's
           # actually negligible. Gate on the container actually being busy.
           expr: |
-            (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m])
-              / on (namespace, pod, container) rate(container_cpu_cfs_periods_total{container!=""}[5m]))
+            (sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m]))
+              / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=""}[5m])))
               > 0.25
-            and on (namespace, pod, container)
-              rate(container_cpu_cfs_periods_total{container!=""}[5m]) > 1
+            and
+              sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=""}[5m])) > 1
           for: 15m
           labels: { severity: warning }
           annotations:
