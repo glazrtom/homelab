@@ -170,6 +170,7 @@ kube-prometheus-stack:
         relabelings:
           - sourceLabels: [__meta_kubernetes_pod_node_name]
             targetLabel: instance
+            action: replace
         # Go runtime metrics from the exporter's own process, plus scrape-meta series -
         # noise on every target, node-exporter included.
         metricRelabelings:
