@@ -83,6 +83,18 @@ gatedApps:
     name: Grafana
     prefix: grafana
     group: homelab-admins
+  - slug: ntfy
+    name: ntfy
+    prefix: ntfy
+    group: homelab-admins
+    # Inverse of Jellyfin's (commented) case above: here the API is the client that
+    # can't follow a browser redirect, not the dashboard. Skip Authentik for
+    # everything except the web app, which NTFY_WEB_ROOT (ntfy/templates/_env.tpl)
+    # moves to /ui for exactly this split - keep the path in step with that value by
+    # hand, values aren't shared across charts. ntfy's own NTFY_AUTH_* (deny-all
+    # default) still gates the skipped paths.
+    skipPathRegex: |
+      ^/(?!ui(/|$)).*
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the

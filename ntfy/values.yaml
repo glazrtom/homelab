@@ -14,17 +14,32 @@ app:
 
 priorityClassName: homelab-monitoring
 
-# ntfy's mobile/desktop clients speak plain HTTP/WebSocket Basic/Bearer auth, not the
-# Authentik forward-auth browser redirect - auth: false + ntfy's own NTFY_AUTH_* env
-# (deny-all default, see templates/_env.tpl) instead of a gatedApps entry.
+# The web dashboard is gated by Authentik like any other admin tool - but ntfy's
+# mobile/desktop clients speak plain HTTP/WebSocket Basic/Bearer auth and can't follow
+# the forward-auth browser redirect, so the API paths are carved out of the gate via
+# authentik/values.yaml's ntfy gatedApps entry (skipPathRegex) and keep relying on
+# ntfy's own NTFY_AUTH_* (deny-all default, see templates/_env.tpl). webRoot below
+# must stay in step with that regex by hand - values aren't shared across charts.
 ingress:
   enabled: true
   external: true
-  auth: false
+  auth: true
+  # The skipPathRegex-exempted API paths bypass Authentik, so they need their own
+  # limiter - lib.ingress only applies its default when auth is false. Same numbers
+  # as that default (lib/templates/_ingress.tpl's lib.rateLimitDefault).
+  rateLimit:
+    rps: 20
+    connections: 20
+    burstMultiplier: 5
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+# Moves the web app off "/" so authentik/values.yaml's skipPathRegex can cleanly
+# exempt "everything except /ui" instead of enumerating every API/topic path (topics
+# are arbitrary strings, so a positive list can't cover them).
+webRoot: "/ui"
 
 volumes:
   data:
