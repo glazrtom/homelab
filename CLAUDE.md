@@ -90,6 +90,14 @@ scratchpad's literal path rather than `$TMPDIR`, avoid `for … do … done` loo
 for the `gh *` family, always unsandboxed per `excludedCommands`), and prefer parallel
 `Read`/`Grep`/`Glob` calls over a `cd … ; cat a; cat b` chain.
 
+`excludedCommands`' `"gh *"` only unsandboxes a Bash call whose **entire** command matches
+that pattern. Piping into `head`, chaining with `;`/`&&`, adding a trailing `echo`, or
+running a second `gh` in the same call makes the whole string stop matching, so it runs
+sandboxed instead — where `~/.config/gh` (holding the token) is unreadable and every `gh`
+call fails with `operation not permitted`. Give every `gh` invocation its own Bash call
+with nothing else in it; trim output with gh's own `--limit`/`--json`/`--jq`/`--search`
+instead of piping, and run independent `gh` calls as separate parallel Bash calls.
+
 ## How deployment works
 
 - Each service is registered as an ArgoCD `Application` CR under `applications/core/`
