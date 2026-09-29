@@ -7,5 +7,5 @@ dependencies:
     repository: file://../lib
   - name: longhorn
     # Verify against https://charts.longhorn.io before bumping.
-    version: 1.12.1
+    version: 1.13.0
     repository: https://charts.longhorn.io
