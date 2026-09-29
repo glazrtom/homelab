@@ -56,6 +56,13 @@ app: {{ include "lib.fullname" . }}
   configMap:
     name: {{ $c.name }}
 {{- end }}
+{{- range $name, $e := .Values.emptyDirVolumes }}
+- name: {{ $name }}
+  emptyDir:
+    {{- with $e.sizeLimit }}
+    sizeLimit: {{ . }}
+    {{- end }}
+{{- end }}
 {{- end -}}
 
 {{/* Env list from a plain map plus a map of secretKeyRef sources: {env: {...}, secretEnv: {NAME: {name, key}}}. */}}
@@ -91,5 +98,9 @@ app: {{ include "lib.fullname" . }}
   {{- with $c.subPath }}
   subPath: {{ . }}
   {{- end }}
+{{- end }}
+{{- range $name, $e := .Values.emptyDirVolumes }}
+- name: {{ $name }}
+  mountPath: {{ $e.mountPath }}
 {{- end }}
 {{- end -}}

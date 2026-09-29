@@ -31,6 +31,13 @@ volumes:
     claimName: media-pvc
     mountPath: /media
 
+# Transcode scratch stays off the 2-replica Longhorn config volume: ffmpeg writes GBs
+# per episode, which Longhorn would replicate across nodes.
+emptyDirVolumes:
+  transcodes:
+    mountPath: /config/cache/transcodes
+    sizeLimit: 20Gi
+
 resources:
   requests:
     cpu: 500m
