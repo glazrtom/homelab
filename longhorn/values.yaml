@@ -138,6 +138,9 @@ longhorn:
   longhornUI:
     replicas: 1  # upstream default is 2; not worth HA-ing a management UI on 2 nodes
 
+  longhornGlobalManager:
+    replicas: 1  # upstream default is 3; one leader + standbys isn't worth it on 2 nodes
+
   csi:
     # The four CSI sidecars each default to 3 replicas for HA. 2 nodes still can't
     # satisfy that spread, and a single instance of each is enough at this scale -
