@@ -114,6 +114,11 @@ longhorn:
     # against usable space. 100 = no overcommit. Upstream default.
     storageOverProvisioningPercentage: 100
 
+    # Upstream default 0 = never upgrade volume engines after a chart bump, which
+    # leaves every volume on the old engine and the old instance-managers pinned.
+    # 1 = one live upgrade per node at a time.
+    concurrentAutomaticEngineUpgradePerNodeLimit: 1
+
   persistence:
     # Creates the `longhorn` StorageClass AND marks it cluster-default.
     defaultClass: true
