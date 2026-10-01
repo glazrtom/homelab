@@ -1,7 +1,7 @@
 {{/* busybox initContainer that pre-creates and chowns the shared media dirs. */}}
 {{- define "transmission.initPerms" -}}
 - name: init-perms
-  image: busybox:1.37
+  image: {{ .Values.initPerms.image.repository }}:{{ .Values.initPerms.image.tag }}
   command:
     - sh
     - -c

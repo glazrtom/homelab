@@ -27,7 +27,7 @@ spec:
           # rather than trying to find one image with both.
           initContainers:
             - name: check
-              image: alpine/k8s:1.36.2
+              image: {{ .Values.hooks.image.repository }}:{{ .Values.hooks.image.tag }}
               command: ["/bin/bash", "-c"]
               args:
                 - |
@@ -66,7 +66,7 @@ spec:
             # heartbeat simply never arrives - Gatus alerts on the missing report
             # exactly as it would on an explicit failure=true.
             - name: report
-              image: curlimages/curl:8.11.0
+              image: {{ $r.curlImage.repository }}:{{ $r.curlImage.tag }}
               command: ["/bin/sh", "-c"]
               args:
                 - |

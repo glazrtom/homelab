@@ -25,6 +25,11 @@ extraEnv:
   - name: LOCAL_NETWORK
     value: "10.42.0.0/15"
 
+initPerms:
+  image:
+    repository: busybox
+    tag: "1.37"
+
 extraEnvTemplate: transmission.env
 sidecarsTemplate: transmission.initPerms
 

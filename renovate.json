@@ -16,21 +16,21 @@
     "init.sh"
   ],
   "helm-values": {
-    "fileMatch": [
-      "(^|/)values(-[^/]+)?\\.ya?ml$"
+    "managerFilePatterns": [
+      "/(^|/)values(-[^/]+)?\\.ya?ml$/"
     ]
   },
   "argocd": {
-    "fileMatch": [
-      "^applications/.+\\.yaml$",
-      "^media/application/Application\\.yaml$"
+    "managerFilePatterns": [
+      "/^applications/.+\\.yaml$/",
+      "/^media/application/Application\\.yaml$/"
     ]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^ingress/values\\.yaml$"
+      "managerFilePatterns": [
+        "/^ingress/values\\.yaml$/"
       ],
       "matchStrings": [
         "name:\\s*(?<depName>ingress-nginx)\\s*\\n\\s*repo:\\s*(?<registryUrl>\\S+)\\s*\\n\\s*version:\\s*\"?(?<currentValue>[^\"\\s]+)"
@@ -39,8 +39,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^argocd/install/kustomization\\.yaml$"
+      "managerFilePatterns": [
+        "/^argocd/install/kustomization\\.yaml$/"
       ],
       "matchStrings": [
         "https://raw\\.githubusercontent\\.com/argoproj/argo-cd/(?<currentValue>v[0-9.]+)/manifests/install\\.yaml"
@@ -50,15 +50,29 @@
     },
     {
       "customType": "regex",
-      "description": "The kubernetes/dockerfile managers misparse this file's Helm template placeholders, so match the literal busybox pin directly instead.",
-      "fileMatch": [
-        "^transmission/templates/deployment\\.yaml$"
+      "description": "Only edits the role default; the new k3s version takes effect when the ansible k3s role is next run.",
+      "managerFilePatterns": [
+        "/^ansible/roles/k3s/defaults/main\\.yml$/"
       ],
       "matchStrings": [
-        "image:\\s*busybox:(?<currentValue>[^\\s\"']+)"
+        "k3s_version:\\s*(?<currentValue>\\S+)"
       ],
-      "depNameTemplate": "busybox",
-      "datasourceTemplate": "docker"
+      "depNameTemplate": "k3s-io/k3s",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+k3s(?<build>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Only edits the role default; the new chart version is installed when the ansible sealed_secrets role is next run.",
+      "managerFilePatterns": [
+        "/^ansible/roles/sealed_secrets/defaults/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "sealed_secrets_chart_version:\\s*\"?(?<currentValue>[^\"\\s]+)"
+      ],
+      "depNameTemplate": "sealed-secrets",
+      "registryUrlTemplate": "https://bitnami.github.io/sealed-secrets",
+      "datasourceTemplate": "helm"
     }
   ],
   "packageRules": [
@@ -101,6 +115,10 @@
     {
       "matchDepNames": ["linuxserver/prowlarr"],
       "sourceUrl": "https://github.com/Prowlarr/Prowlarr"
+    },
+    {
+      "matchDepNames": ["qmcgaw/gluetun"],
+      "sourceUrl": "https://github.com/qdm12/gluetun"
     },
     {
       "description": "authentik chart changelog lives in the main authentik repo, not the Helm chart repo.",

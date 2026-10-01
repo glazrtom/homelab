@@ -13,6 +13,7 @@
   kubernetes.core.helm:
     name: sealed-secrets
     chart_ref: sealed-secrets/sealed-secrets
+    chart_version: "{{ sealed_secrets_chart_version }}"
     namespace: "{{ sealed_secrets_namespace }}"
     values:
       fullnameOverride: "{{ sealed_secrets_fullname }}"

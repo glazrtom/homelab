@@ -43,7 +43,7 @@ prowlarr:
       cpu: 20m
       memory: 256Mi
   vpn:
-    image: qmcgaw/gluetun
+    image: qmcgaw/gluetun:v3.41.3
     env:
       VPN_SERVICE_PROVIDER: windscribe
       VPN_TYPE: openvpn

@@ -46,6 +46,9 @@ backup:
     recurringJob: backup-daily
     schedule: "30 3 * * *"
     windowHours: 26
+    curlImage:
+      repository: curlimages/curl
+      tag: "8.22.0"
 
 # Image shared by the PostSync hook Jobs below (kubectl + bash is all either needs).
 hooks:
