@@ -1,25 +1,3 @@
-- name: Add Helm repo for SealedSecrets
-  kubernetes.core.helm_repository:
-    name: sealed-secrets
-    repo_url: "{{ sealed_secrets_repo_url }}"
-
-- name: Update Helm repo cache
-  ansible.builtin.command: helm repo update
-  changed_when: false
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-
-- name: Install SealedSecrets controller
-  kubernetes.core.helm:
-    name: sealed-secrets
-    chart_ref: sealed-secrets/sealed-secrets
-    chart_version: "{{ sealed_secrets_chart_version }}"
-    namespace: "{{ sealed_secrets_namespace }}"
-    values:
-      fullnameOverride: "{{ sealed_secrets_fullname }}"
-    state: present
-    kubeconfig: "{{ kubeconfig_path }}"
-
 - name: Wait until the SealedSecrets controller is available
   kubernetes.core.k8s_info:
     api_version: apps/v1
@@ -31,5 +9,5 @@
   until: >-
     sealed_secrets_controller.resources | length > 0 and
     (sealed_secrets_controller.resources[0].status.availableReplicas | default(0)) > 0
-  retries: 20
+  retries: 60
   delay: 5

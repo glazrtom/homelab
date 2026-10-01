@@ -1,4 +1,2 @@
-sealed_secrets_repo_url: https://bitnami.github.io/sealed-secrets
-sealed_secrets_chart_version: "2.19.1"
 sealed_secrets_namespace: kube-system
 sealed_secrets_fullname: sealed-secrets-controller

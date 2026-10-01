@@ -101,7 +101,7 @@ instead of piping, and run independent `gh` calls as separate parallel Bash call
 ## How deployment works
 
 - Each service is registered as an ArgoCD `Application` CR under `applications/core/`
-  (cluster infra: reflector, MetalLB, ingress, ArgoCD self-config, Cloudflare) or `applications/apps/`
+  (cluster infra: sealed-secrets, reflector, MetalLB, ingress, ArgoCD self-config, Cloudflare) or `applications/apps/`
   (workloads: Jellyfin, Pi-hole, media, Authentik, …). Two app-of-apps Applications —
   `applications/core.yaml` and `applications/apps.yaml` — point at those two directories
   and are applied by the Ansible playbooks (see the `ansible-provisioning` skill);

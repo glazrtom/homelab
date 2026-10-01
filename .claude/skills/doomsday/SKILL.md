@@ -37,7 +37,8 @@ ArgoCD ever creates that PVC.
    per `ansible/inventory.ini`.
 2. `cd ansible && ansible-galaxy collection install -r requirements.yml --upgrade`
 3. `ansible-playbook playbooks/cluster.yml -K` — provisions the host, k3s, and the cluster
-   foundation (Helm, ArgoCD, sealed-secrets, Cloudflare), then applies `applications/core.yaml`.
+   foundation (Helm, ArgoCD), applies `applications/core.yaml` (which installs the
+   sealed-secrets controller), waits for the controller, then sets up Cloudflare.
    k3s is installed **unpinned** (`ansible/roles/k3s/defaults/main.yml` sets no
    `INSTALL_K3S_VERSION`), so check whatever version `get.k3s.io` served against Longhorn 1.12's
    support matrix before continuing if the rebuild happens much later than the original install.

@@ -60,19 +60,6 @@
       "depNameTemplate": "k3s-io/k3s",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+k3s(?<build>\\d+)$"
-    },
-    {
-      "customType": "regex",
-      "description": "Only edits the role default; the new chart version is installed when the ansible sealed_secrets role is next run.",
-      "managerFilePatterns": [
-        "/^ansible/roles/sealed_secrets/defaults/main\\.yml$/"
-      ],
-      "matchStrings": [
-        "sealed_secrets_chart_version:\\s*\"?(?<currentValue>[^\"\\s]+)"
-      ],
-      "depNameTemplate": "sealed-secrets",
-      "registryUrlTemplate": "https://bitnami.github.io/sealed-secrets",
-      "datasourceTemplate": "helm"
     }
   ],
   "packageRules": [
@@ -115,6 +102,10 @@
     {
       "matchDepNames": ["linuxserver/prowlarr"],
       "sourceUrl": "https://github.com/Prowlarr/Prowlarr"
+    },
+    {
+      "matchDepNames": ["sealed-secrets"],
+      "sourceUrl": "https://github.com/bitnami-labs/sealed-secrets"
     },
     {
       "matchDepNames": ["qmcgaw/gluetun"],

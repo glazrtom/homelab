@@ -27,14 +27,17 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   context into `~/.kube/config`, leaving every other context there untouched) → `helm` (installs Helm 3; the helm-diff plugin install is currently
   commented out) → `argocd` (namespace + upstream `install.yaml`, pinned to v3.4.5,
   applied `--server-side`, then disables internal TLS and rollout-restarts if changed)
-  → `sealed_secrets` (installs the Sealed Secrets controller via Helm
-  into `kube-system`) → `cloudflare` (installs/logs in `cloudflared` if needed, creates the
+  → `argocd_apps` (applies `applications/core.yaml`; ArgoCD then installs the Sealed
+  Secrets controller from `applications/core/sealed-secrets.yaml`) → `sealed_secrets`
+  (only waits for that controller to become available, since `kubeseal` needs it) →
+  `cloudflare` (installs/logs in `cloudflared` if needed, creates the
   tunnel and its wildcard DNS route if missing, then runs `cloudflare/generate-secret.sh` —
   the same `scripts/seal.sh` hash-gated reseal used by the other secrets, see the `secrets`
   skill — and prompts before commit/push; any declined or failed step just skips the rest
-  of the role rather than failing the play) → `argocd_apps` (applies `applications/core.yaml`).
-  From there ArgoCD deploys reflector, MetalLB, ingress, its own self-config, and
-  Cloudflare (see sync-wave annotations in `applications/core/*.yaml`).
+  of the role rather than failing the play). ArgoCD deploys sealed-secrets, reflector,
+  MetalLB, ingress, its own self-config, and Cloudflare (see sync-wave annotations in
+  `applications/core/*.yaml`); the cloudflare Application syncs with the old sealed
+  secret until the role's reseal is pushed.
 - **`playbooks/apps.yml`** (stage 2) runs `secrets` (always resealing — see below) →
   `argocd_apps` (applies `applications/apps.yaml`; ArgoCD then deploys every workload
   under `applications/apps/`).
