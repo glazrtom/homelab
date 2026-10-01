@@ -28,9 +28,11 @@ backup:
     # host comes from AWS_ENDPOINTS in the credential secret.
     url: "s3://glazrtom-homelab-longhorn@eu-central-003/"
     credentialSecret: longhorn-b2-credentials
-    # A Go time.Duration string - a bare number (e.g. "300") is rejected by the
-    # longhorn.io mutating webhook with "missing unit in duration".
-    pollInterval: "300s"
+    # A Go time.Duration string in canonical form (time.Duration.String()) - a bare
+    # number (e.g. "300") is rejected by the longhorn.io mutating webhook with "missing
+    # unit in duration", and a non-canonical spelling (e.g. "300s") is rewritten by it to
+    # "5m0s", leaving the Application permanently OutOfSync.
+    pollInterval: "5m0s"
   # Reports backup-daily's outcome to Gatus as a push/heartbeat monitor (see
   # gatus/values.yaml external-endpoints and backup-report-cronjob.yaml below) -
   # Gatus alerts if no "success" report ever arrives, so a failure here fails loud
