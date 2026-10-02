@@ -23,6 +23,16 @@ excalidash:
   fullnameOverride: excalidash
   secrets:
     existingSecret: excalidash-secrets
+  database:
+    provider: postgresql
+  postgresql:
+    enabled: true
+    auth:
+      existingSecret: excalidash-secrets
+    persistence:
+      storageClass: longhorn
+      size: 2Gi
+  # Still mounted at /app/prisma for the backend's persisted secret files.
   persistence:
     storageClass: longhorn
     size: 1Gi
