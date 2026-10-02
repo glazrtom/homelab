@@ -42,8 +42,8 @@ users:
 # to the embedded outpost, the internal half to the "internal" outpost, so both
 # nginx-internal and nginx-external are gated by default.
 #
-# Narrowing a list does not delete the old binding (blueprints never remove objects);
-# delete it in the UI.
+# Each app's access is one generated expression policy, so adding or removing a group
+# or user here takes effect on the next blueprint apply with nothing left behind.
 #
 # There is deliberately no catch-all provider. A host missing from this list, or
 # renamed without updating it, matches nothing and the outpost denies it. Hosts that

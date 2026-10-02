@@ -23,8 +23,10 @@ registry of gated hosts and who is allowed in — `groups:` (audiences such as
 match on either grants access. Users and their group membership are declared in the
 top-level `users:` map and applied authoritatively (UI membership edits get reverted;
 passwords/MFA stay in the UI). Authentik Roles can't gate apps — only groups, users or
-policies can be bound. Narrowing an entry doesn't delete the old binding; remove it in
-the UI. The blueprint
+policies can be bound. Each app's access is a single generated expression policy
+(`access-<slug>`) bound once per host, so narrowing an entry applies cleanly — blueprints
+never delete objects an entry stops declaring, which is why the lists aren't bound
+individually. The blueprint
 (`authentik/templates/blueprint-access.yaml`) generates **two** `forward_single` proxy
 providers per entry — one for the public host, one for `<prefix>.internal` — so one
 registry entry gates both classes at once. A host missing from `gatedApps` matches no

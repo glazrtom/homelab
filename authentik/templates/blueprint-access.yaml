@@ -35,8 +35,8 @@ are kept apart because each attaches to a different outpost below.
 {{- end }}
 {{- $groups = concat $groups $appGroups }}
 {{- $extHost := $app.externalHost | default (printf "%s.%s" $app.prefix $public) }}
-{{- $publicVariants = append $publicVariants (dict "id" $app.slug "name" $app.name "groups" $appGroups "users" $appUsers "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
-{{- $internalVariants = append $internalVariants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "groups" $appGroups "users" $appUsers "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
+{{- $publicVariants = append $publicVariants (dict "id" $app.slug "slug" $app.slug "name" $app.name "groups" $appGroups "users" $appUsers "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
+{{- $internalVariants = append $internalVariants (dict "id" (printf "%s-internal" $app.slug) "slug" $app.slug "name" (printf "%s (internal)" $app.name) "groups" $appGroups "users" $appUsers "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
 {{- end }}
 {{- $variants := concat $publicVariants $internalVariants }}
 
@@ -133,6 +133,27 @@ data:
           users: []
           {{- end }}
       {{ end }}
+      # Access to each gated app is one expression policy regenerated from values on
+      # every apply, shared by the public and internal halves. Binding individual
+      # groups/users per app would leave the old bindings behind when a list is
+      # narrowed (blueprints never delete what an entry no longer declares), and
+      # policy_engine_mode: any would keep honouring them.
+      {{- range $app := .Values.gatedApps }}
+      {{- $clauses := list }}
+      {{- range $g := $app.groups | default list }}
+      {{- $clauses = append $clauses (printf "ak_is_group_member(request.user, name=%s)" ($g | toJson)) }}
+      {{- end }}
+      {{- if $app.users }}
+      {{- $clauses = append $clauses (printf "request.user.username in %s" ($app.users | toJson)) }}
+      {{- end }}
+      - model: authentik_policies_expression.expressionpolicy
+        id: policy-access-{{ $app.slug }}
+        identifiers:
+          name: access-{{ $app.slug }}
+        attrs:
+          expression: |
+            return {{ join " or " $clauses }}
+      {{ end }}
       # --- One provider per host, no catch-all. A host absent from gatedApps matches
       # nothing and the outpost answers 400, which nginx turns into a 403 - so
       # forgetting an app, or renaming one without updating the registry, denies access
@@ -163,23 +184,33 @@ data:
           meta_launch_url: {{ $v.url }}
           policy_engine_mode: any
 
-      {{- range $i, $g := $v.groups }}
-
       - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-{{ $v.id }}
+          policy: !KeyOf policy-access-{{ $v.slug }}
+          order: 0
+      {{ end }}
+      # TEMPORARY, remove in a follow-up commit once this has applied: deletes the
+      # direct group bindings the previous template created (one per app, order 0),
+      # which would otherwise keep granting access next to the policies above. Only
+      # !KeyOf references - an unresolved group/user would match any order-0 binding
+      # on the app, including the policy binding. homelab-personal is deleted outright;
+      # its radarr/sonarr bindings go with it (cascade).
+      {{- range $v := $variants }}
+      {{- range $g := $v.groups }}
+      - model: authentik_policies.policybinding
+        state: absent
         identifiers:
           target: !KeyOf app-{{ $v.id }}
           group: !KeyOf group-{{ $g }}
-          order: {{ $i }}
+          order: 0
       {{- end }}
-      {{- range $j, $u := $v.users }}
-
-      - model: authentik_policies.policybinding
+      {{- end }}
+      - model: authentik_core.group
+        state: absent
         identifiers:
-          target: !KeyOf app-{{ $v.id }}
-          user: !KeyOf user-{{ $u }}
-          order: {{ add (len $v.groups) $j }}
-      {{- end }}
-      {{ end }}
+          name: homelab-personal
+
       # Matches the connection outpost_connection_discovery auto-creates on startup,
       # by name, so this adopts it rather than adding a duplicate.
       - model: authentik_outposts.kubernetesserviceconnection
