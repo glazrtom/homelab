@@ -97,6 +97,10 @@ gatedApps:
     name: Grafana
     prefix: grafana
     groups: [homelab-admins]
+  - slug: excalidash
+    name: ExcaliDash
+    prefix: excalidash
+    groups: [homelab-users]
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the
@@ -108,6 +112,16 @@ argocdOidc:
   clientId: argocd
   slug: argocd-oidc
   group: homelab-admins
+
+# Browser SSO into ExcaliDash, on top of its forward-auth gate (the `excalidash`
+# gatedApps entry). Public client (PKCE, no client_secret), public issuer only - same
+# shape as argocdOidc. The issuer URL the app is given is
+# https://auth.<public suffix>/application/o/<slug>/.
+excalidashOidc:
+  enabled: true
+  clientId: excalidash
+  slug: excalidash-oidc
+  group: homelab-users
 
 authentik:
   global:

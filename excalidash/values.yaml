@@ -1,0 +1,46 @@
+namespace: excalidash
+
+app:
+  name: excalidash
+  domainPrefix: excalidash
+  port: 80
+
+# The subchart's frontend nginx fronts the backend and serves /api and /socket.io.
+service:
+  name: excalidash-frontend
+  port: 80
+
+ingress:
+  enabled: true
+  external: true
+  auth: true
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m
+
+excalidash:
+  fullnameOverride: excalidash
+  secrets:
+    existingSecret: excalidash-secrets
+  persistence:
+    storageClass: longhorn
+    size: 1Gi
+    annotations:
+      argocd.argoproj.io/sync-options: Delete=false,Prune=false
+  backend:
+    env:
+      # local + OIDC: the first-run setup code still works, SSO is the normal path.
+      authMode: hybrid
+      # Hops in front of the backend: nginx-external (or -internal) + frontend nginx.
+      trustProxy: "2"
+      # Public URL first (OIDC redirect URI derives from it), LAN host second.
+      frontendUrl: "https://excalidash.glazrtom.cz,http://excalidash.internal"
+      # TLS ends at Cloudflare; the internal host is plain http.
+      enforceHttpsRedirect: "false"
+  oidc:
+    enabled: true
+    providerName: Authentik
+    issuerUrl: "https://auth.glazrtom.cz/application/o/excalidash-oidc/"
+    clientId: excalidash
+    jitProvisioning: "true"
