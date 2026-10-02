@@ -190,26 +190,6 @@ data:
           policy: !KeyOf policy-access-{{ $v.slug }}
           order: 0
       {{ end }}
-      # TEMPORARY, remove in a follow-up commit once this has applied: deletes the
-      # direct group bindings the previous template created (one per app, order 0),
-      # which would otherwise keep granting access next to the policies above. Only
-      # !KeyOf references - an unresolved group/user would match any order-0 binding
-      # on the app, including the policy binding. homelab-personal is deleted outright;
-      # its radarr/sonarr bindings go with it (cascade).
-      {{- range $v := $variants }}
-      {{- range $g := $v.groups }}
-      - model: authentik_policies.policybinding
-        state: absent
-        identifiers:
-          target: !KeyOf app-{{ $v.id }}
-          group: !KeyOf group-{{ $g }}
-          order: 0
-      {{- end }}
-      {{- end }}
-      - model: authentik_core.group
-        state: absent
-        identifiers:
-          name: homelab-personal
 
       # Matches the connection outpost_connection_discovery auto-creates on startup,
       # by name, so this adopts it rather than adding a duplicate.
