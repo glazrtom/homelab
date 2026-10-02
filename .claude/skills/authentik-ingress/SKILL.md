@@ -18,7 +18,13 @@ a hand-written exception):
 
 Path from the internet: **Cloudflare Tunnel (`cloudflare/`) → nginx-external → service.**
 **Both classes are deny-by-default.** `authentik/values.yaml` `gatedApps` is the single
-registry of gated hosts and the group allowed in; the blueprint
+registry of gated hosts and who is allowed in — `groups:` (audiences such as
+`homelab-users`/`homelab-admins`) and/or `users:` (usernames for one person's app); a
+match on either grants access. Users and their group membership are declared in the
+top-level `users:` map and applied authoritatively (UI membership edits get reverted;
+passwords/MFA stay in the UI). Authentik Roles can't gate apps — only groups, users or
+policies can be bound. Narrowing an entry doesn't delete the old binding; remove it in
+the UI. The blueprint
 (`authentik/templates/blueprint-access.yaml`) generates **two** `forward_single` proxy
 providers per entry — one for the public host, one for `<prefix>.internal` — so one
 registry entry gates both classes at once. A host missing from `gatedApps` matches no

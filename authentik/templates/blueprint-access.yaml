@@ -1,7 +1,17 @@
 {{- $public := .Values.global.domain.public.suffix }}
 {{- $internal := .Values.global.domain.internal.suffix }}
 {{- $ldapGroup := .Values.ldapGroup }}
+{{- $users := .Values.users }}
 {{- $groups := list $ldapGroup }}
+{{- if .Values.argocdOidc.enabled }}
+{{- $groups = append $groups .Values.argocdOidc.group }}
+{{- end }}
+{{- range $name, $u := $users }}
+{{- if not $u.groups }}
+{{- fail (printf "users.%s needs at least one group" $name) }}
+{{- end }}
+{{- $groups = concat $groups $u.groups }}
+{{- end }}
 
 {{/*
 Flatten gatedApps into one entry per host. A proxy provider carries a single
@@ -13,13 +23,22 @@ are kept apart because each attaches to a different outpost below.
 {{- $publicVariants := list }}
 {{- $internalVariants := list }}
 {{- range $app := .Values.gatedApps }}
-{{- $groups = append $groups $app.group }}
+{{- $appGroups := $app.groups | default list }}
+{{- $appUsers := $app.users | default list }}
+{{- if not (or $appGroups $appUsers) }}
+{{- fail (printf "gatedApps entry %s needs groups and/or users, or nobody can reach it" $app.slug) }}
+{{- end }}
+{{- range $u := $appUsers }}
+{{- if not (hasKey $users $u) }}
+{{- fail (printf "gatedApps entry %s lists user %s, which is not in the users map" $app.slug $u) }}
+{{- end }}
+{{- end }}
+{{- $groups = concat $groups $appGroups }}
 {{- $extHost := $app.externalHost | default (printf "%s.%s" $app.prefix $public) }}
-{{- $publicVariants = append $publicVariants (dict "id" $app.slug "name" $app.name "group" $app.group "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
-{{- $internalVariants = append $internalVariants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "group" $app.group "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
+{{- $publicVariants = append $publicVariants (dict "id" $app.slug "name" $app.name "groups" $appGroups "users" $appUsers "skip" $app.skipPathRegex "url" (printf "https://%s" $extHost)) }}
+{{- $internalVariants = append $internalVariants (dict "id" (printf "%s-internal" $app.slug) "name" (printf "%s (internal)" $app.name) "groups" $appGroups "users" $appUsers "skip" $app.skipPathRegex "url" (printf "http://%s.%s" $app.prefix $internal)) }}
 {{- end }}
 {{- $variants := concat $publicVariants $internalVariants }}
-{{- $groups = $groups | uniq | sortAlpha }}
 
 {{/* Jellyfin's own host prefix, shared with its gatedApps entry so the OIDC redirect
 URIs below can't drift from the forward-auth host they sit alongside. */}}
@@ -45,9 +64,6 @@ sits alongside. */}}
 {{- if and .Values.argocdOidc.enabled (not $argocdApp) }}
 {{- fail "blueprint-access.yaml expects a gatedApps entry with slug: argocd for the ArgoCD OIDC provider's redirect_uri" }}
 {{- end }}
-{{- if and .Values.argocdOidc.enabled (not (has .Values.argocdOidc.group $groups)) }}
-{{- fail "argocdOidc.group must match the group of a gatedApps entry, so blueprint-access.yaml's group-<name> object already exists for it" }}
-{{- end }}
 
 {{- if lt (len $variants) 2 }}
 {{- fail "gatedApps must produce at least two applications: a proxy outpost serving a single application serves it for any hostname, which would defeat the per-host gating" }}
@@ -63,7 +79,8 @@ data:
   # below orphans the old instance into a permanently-failing state.
   #
   # `state: created` marks seed-only entries: either they carry a credential that
-  # must not be re-rolled, or the serializer would clobber data not declared here.
+  # must not be re-rolled, or the serializer would clobber data not declared here
+  # (user accounts: passwords, MFA, profile).
   access.yaml: |
     version: 1
     metadata:
@@ -79,15 +96,42 @@ data:
         attrs:
           session_duration: days=7
 
-      # Membership stays a UI concern. GroupSerializer.users defaults to [] when
-      # omitted and the importer builds a non-partial serializer, so without
-      # state: created a re-apply would empty every group.
-      {{- range $group := $groups }}
-      - model: authentik_core.group
-        id: group-{{ $group }}
+      # Users come from the users map, before the groups that reference them (!KeyOf
+      # only resolves entries already applied). state: created seeds a missing account
+      # without ever touching an existing one, so passwords and MFA stay UI-managed.
+      {{- range $name, $u := $users }}
+      - model: authentik_core.user
+        id: user-{{ $name }}
         state: created
         identifiers:
+          username: {{ $name }}
+        attrs:
+          name: {{ $u.name | default $name | quote }}
+      {{ end }}
+      # Group membership is declared in values: the importer builds a non-partial
+      # serializer, so every apply sets `users` to exactly this list and reverts
+      # membership edits made in the UI. Any other group field omitted here (roles,
+      # parent, attributes) is likewise reset to its default.
+      {{- range $group := $groups | uniq | sortAlpha }}
+      {{- $members := list }}
+      {{- range $name, $u := $users }}
+      {{- if has $group $u.groups }}
+      {{- $members = append $members $name }}
+      {{- end }}
+      {{- end }}
+      - model: authentik_core.group
+        id: group-{{ $group }}
+        identifiers:
           name: {{ $group }}
+        attrs:
+          {{- if $members }}
+          users:
+            {{- range $name := $members }}
+            - !KeyOf user-{{ $name }}
+            {{- end }}
+          {{- else }}
+          users: []
+          {{- end }}
       {{ end }}
       # --- One provider per host, no catch-all. A host absent from gatedApps matches
       # nothing and the outpost answers 400, which nginx turns into a 403 - so
@@ -119,11 +163,22 @@ data:
           meta_launch_url: {{ $v.url }}
           policy_engine_mode: any
 
+      {{- range $i, $g := $v.groups }}
+
       - model: authentik_policies.policybinding
         identifiers:
           target: !KeyOf app-{{ $v.id }}
-          group: !KeyOf group-{{ $v.group }}
-          order: 0
+          group: !KeyOf group-{{ $g }}
+          order: {{ $i }}
+      {{- end }}
+      {{- range $j, $u := $v.users }}
+
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-{{ $v.id }}
+          user: !KeyOf user-{{ $u }}
+          order: {{ add (len $v.groups) $j }}
+      {{- end }}
       {{ end }}
       # Matches the connection outpost_connection_discovery auto-creates on startup,
       # by name, so this adopts it rather than adding a duplicate.
