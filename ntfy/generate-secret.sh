@@ -5,6 +5,9 @@
 # reflected into monitoring/ the same way gatus/generate-secret.sh reflects its
 # heartbeat token into longhorn-system.
 #
+# The `media` user/token (write-only to topic `media`) is for the media apps
+# (radarr, sonarr, ...): they store it in their own settings, so it isn't reflected.
+#
 # Adding a token for another service that wants to push through ntfy: add a
 # resolve/NTFY_AUTH_ACCESS line here for that service's user, mint it a token the
 # same way AM_TOKEN is minted below, and reflect its Secret into that service's
@@ -27,9 +30,11 @@ resolve ADMIN_PASSWORD --gen 'rand_alnum 32'
 # Never used to log in - a bearer token needs an owning user (NTFY_AUTH_TOKENS
 # below), and ntfy has no "service account with no password" concept.
 resolve AM_PASSWORD --unsafe-force --gen 'rand_alnum 32'
-resolve NTFY_AUTH_USERS --gen 'printf "%s:%s:admin,alertmanager:%s:user" "$ADMIN_USER" "$(bhash "$ADMIN_PASSWORD")" "$(bhash "$AM_PASSWORD")"'
+resolve MEDIA_PASSWORD --unsafe-force --gen 'rand_alnum 32'
+resolve NTFY_AUTH_USERS --gen 'printf "%s:%s:admin,alertmanager:%s:user,media:%s:user" "$ADMIN_USER" "$(bhash "$ADMIN_PASSWORD")" "$(bhash "$AM_PASSWORD")" "$(bhash "$MEDIA_PASSWORD")"'
 resolve AM_TOKEN --unsafe-force --gen 'printf "tk_%s" "$(openssl rand -base64 64 | LC_ALL=C tr -dc a-z0-9 | head -c 29)"'
-resolve NTFY_AUTH_TOKENS --gen 'printf "alertmanager:%s:alertmanager" "$AM_TOKEN"'
+resolve MEDIA_TOKEN --unsafe-force --gen 'printf "tk_%s" "$(openssl rand -base64 64 | LC_ALL=C tr -dc a-z0-9 | head -c 29)"'
+resolve NTFY_AUTH_TOKENS --gen 'printf "alertmanager:%s:alertmanager,media:%s:media" "$AM_TOKEN" "$MEDIA_TOKEN"'
 secret_literal_args
 kubectl create secret generic ntfy-auth --namespace ntfy \
   "${SECRET_LITERAL_ARGS[@]}" --dry-run=client -o yaml > "$PLAIN"

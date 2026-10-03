@@ -12,7 +12,7 @@ ntfy.sh, which forwards to APNs - see docs.ntfy.sh/config.
     "NTFY_CACHE_FILE" (printf "%s/cache.db" .Values.volumes.data.mountPath)
     "NTFY_AUTH_FILE" (printf "%s/auth.db" .Values.volumes.data.mountPath)
     "NTFY_AUTH_DEFAULT_ACCESS" "deny-all"
-    "NTFY_AUTH_ACCESS" "alertmanager:alerts:wo"
+    "NTFY_AUTH_ACCESS" "alertmanager:alerts:wo,media:media:wo"
     "NTFY_UPSTREAM_BASE_URL" "https://ntfy.sh"
   )
   "secretEnv" (dict
