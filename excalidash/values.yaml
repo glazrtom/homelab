@@ -58,3 +58,5 @@ excalidash:
     issuerUrl: "https://auth.glazrtom.cz/application/o/excalidash-oidc/"
     clientId: excalidash
     jitProvisioning: "true"
+    # Authentik's managed email scope always sends email_verified: false.
+    requireEmailVerified: "false"
