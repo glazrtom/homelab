@@ -3,7 +3,8 @@
 # the chart never generates them (lookup/random values would rotate under ArgoCD).
 # API_KEY_HASH_PEPPER must never change once API keys exist - each key backfills from
 # local plaintext, then the live cluster, so a re-run never re-rolls an existing value.
-# The OIDC client is public (PKCE), so there is no OIDC_CLIENT_SECRET to seal.
+# OIDC_CLIENT_SECRET is not here: authentik/generate-secret.sh owns it
+# and reflector copies it in as excalidash-oidc-client.
 set -euo pipefail
 cd "$(dirname "$0")"
 source ../scripts/secretlib.sh

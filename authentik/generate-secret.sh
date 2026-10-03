@@ -38,4 +38,17 @@ kubectl create secret generic authentik-secrets \
   "${SECRET_LITERAL_ARGS[@]}" \
   --dry-run=client -o yaml > "$PLAIN"
 
+secret_source authentik excalidash-oidc-client
+resolve OIDC_CLIENT_SECRET --gen 'rand_hex 32'
+{
+  echo "---"
+  kubectl create secret generic excalidash-oidc-client \
+    --namespace authentik \
+    --from-literal=OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" \
+    --dry-run=client -o yaml \
+  | kubectl annotate --local -f - \
+     $(reflector_annotations "excalidash") \
+     --output yaml
+} >> "$PLAIN"
+
 secret_finish

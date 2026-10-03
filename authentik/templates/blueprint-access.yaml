@@ -464,15 +464,17 @@ data:
           order: 0
       {{- end }}
       {{- if .Values.excalidashOidc.enabled }}
-      # Browser SSO into ExcaliDash, on top of its forward-auth gate. Public client
-      # (PKCE, no client_secret) and public issuer only, like ArgoCD's above.
+      # Browser SSO into ExcaliDash, on top of its forward-auth gate. Confidential
+      # (unlike ArgoCD's): ExcaliDash rejects a public client because Authentik never
+      # advertises token auth method "none". Public issuer only.
       - model: authentik_providers_oauth2.oauth2provider
         id: provider-excalidash-oidc
         identifiers:
           name: excalidash-oidc
         attrs:
-          client_type: public
+          client_type: confidential
           client_id: {{ .Values.excalidashOidc.clientId }}
+          client_secret: !Env EXCALIDASH_OIDC_CLIENT_SECRET
           grant_types:
             - authorization_code
             - refresh_token

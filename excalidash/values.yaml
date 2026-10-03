@@ -39,6 +39,10 @@ excalidash:
     annotations:
       argocd.argoproj.io/sync-options: Delete=false,Prune=false
   backend:
+    # OIDC_CLIENT_SECRET, reflected from authentik (authentik/generate-secret.sh).
+    extraEnvFrom:
+      - secretRef:
+          name: excalidash-oidc-client
     env:
       # local + OIDC: the first-run setup code still works, SSO is the normal path.
       authMode: hybrid

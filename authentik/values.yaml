@@ -114,8 +114,9 @@ argocdOidc:
   group: homelab-admins
 
 # Browser SSO into ExcaliDash, on top of its forward-auth gate (the `excalidash`
-# gatedApps entry). Public client (PKCE, no client_secret), public issuer only - same
-# shape as argocdOidc. The issuer URL the app is given is
+# gatedApps entry). Confidential client (ExcaliDash refuses a public one), secret
+# shared via the excalidash-oidc-client secret (generate-secret.sh); public issuer only. The issuer URL the
+# app is given is
 # https://auth.<public suffix>/application/o/<slug>/.
 excalidashOidc:
   enabled: true
@@ -133,6 +134,13 @@ authentik:
     # server pod). Every host is forward-auth'd through this chart, so it must outlast
     # regular workloads under node pressure.
     priorityClassName: homelab-authentik
+    # Reflected from this namespace into excalidash too - see generate-secret.sh.
+    env:
+      - name: EXCALIDASH_OIDC_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: excalidash-oidc-client
+            key: OIDC_CLIENT_SECRET
 
   authentik:
     error_reporting:

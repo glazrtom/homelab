@@ -45,6 +45,12 @@ are safe to regenerate on a running install** without the matching manual follow
 Postgres password / Django secret key break authentik <-> postgres auth immediately, and
 the rest are pinned into the LDAP outpost provider or Jellyfin's PVC-stored plugin config.
 
+`authentik/generate-secret.sh` also emits a second Secret, `excalidash-oidc-client`
+(same plaintext file; reflector copies whole Secrets, so it can't ride in
+`authentik-secrets`), reflected into `excalidash`, so
+Authentik's blueprint (`EXCALIDASH_OIDC_CLIENT_SECRET`) and ExcaliDash's backend
+(`OIDC_CLIENT_SECRET`) read one value; re-rolling it is safe once authentik restarts.
+
 `base/generate-secret.sh` annotates the GHCR pull secret for **reflector**
 (emberstack), which mirrors it into other namespaces; it recovers its three inputs back
 out of the live/local `.dockerconfigjson` blob via `jq`. `base/generate-windscribe-secret.sh`
