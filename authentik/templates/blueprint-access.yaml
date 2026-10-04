@@ -584,8 +584,9 @@ data:
 
       {{- if .Values.ralllyOidc.enabled }}
       # Browser SSO into Rallly, on top of its forward-auth gate. Confidential; public
-      # issuer only (Rallly's baseUrl is the public host). Rallly uses better-auth, so the
-      # callback is /api/better-auth/oauth2/callback/oidc (/api/auth/callback/oidc only redirects there).
+      # issuer only (Rallly's baseUrl is the public host). Rallly 4.12 (better-auth) sends
+      # /api/auth/callback/oidc as redirect_uri and forwards it to its native
+      # /api/better-auth/oauth2/callback/oidc, so both are allowed.
       - model: authentik_providers_oauth2.oauth2provider
         id: provider-rallly-oidc
         identifiers:
@@ -603,6 +604,8 @@ data:
           sub_mode: user_username
           include_claims_in_id_token: true
           redirect_uris:
+            - url: https://{{ $ralllyApp.prefix }}.{{ $public }}/api/auth/callback/oidc
+              matching_mode: strict
             - url: https://{{ $ralllyApp.prefix }}.{{ $public }}/api/better-auth/oauth2/callback/oidc
               matching_mode: strict
           property_mappings:
