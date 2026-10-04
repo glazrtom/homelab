@@ -8,7 +8,6 @@
   "automerge": false,
   "prConcurrentLimit": 0,
   "prHourlyLimit": 0,
-  "separateMinorPatch": true,
   "additionalBranchPrefix": "{{parentDir}}-",
   "ignorePaths": [
     "debug/**",
