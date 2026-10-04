@@ -1,0 +1,2 @@
+{{- $ctx := dict "Values" (include "dawarich.scope" (dict "root" . "component" "sidekiq") | fromYaml) }}
+{{ include "lib.deployment" $ctx }}

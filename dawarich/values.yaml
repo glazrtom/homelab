@@ -1,0 +1,200 @@
+namespace: dawarich
+
+# Top-level keys are the web component, so lib.ingress/lib.service/lib.authOutpost work
+# unchanged; sidekiq, postgis and redis below are rendered through lib.deployment with a
+# scoped context (templates/_scope.tpl).
+#
+# Only postgis is pinned (by architecture, its image is amd64-only); everything else
+# floats.
+app:
+  name: dawarich
+  port: 3000
+  domainPrefix: dawarich
+
+image:
+  repository: docker.io/freikin/dawarich
+  tag: "1.15.3"
+  pullPolicy: IfNotPresent
+
+command: [web-entrypoint.sh]
+args: [bin/rails, server, -p, "3000", -b, "::"]
+
+extraEnvTemplate: dawarich.env
+
+# Public host is forward-auth gated except /api/ (see the dawarich gatedApps entry), which
+# phones and OwnTracks/Overland-style clients reach with a per-user API key.
+ingress:
+  enabled: true
+  external: true
+  auth: true
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+
+# Shared by every component's env (templates/_env.tpl).
+settings:
+  RAILS_ENV: production
+  SELF_HOSTED: "true"
+  STORE_GEODATA: "true"
+  RAILS_LOG_TO_STDOUT: "true"
+  DISTANCE_UNIT: km
+  MIN_MINUTES_SPENT_IN_CITY: "60"
+  BACKGROUND_PROCESSING_CONCURRENCY: "10"
+  PROMETHEUS_EXPORTER_ENABLED: "false"
+  DATABASE_HOST: dawarich-postgis
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: dawarich
+
+# Login is OIDC only. The issuer's slug and clientId must match dawarichOidc in
+# authentik/values.yaml.
+oidc:
+  clientId: dawarich
+  slug: dawarich-oidc
+  providerName: Authentik
+  # Minted by authentik/generate-secret.sh and reflected into this namespace.
+  secretName: dawarich-oidc-client
+
+secretName: dawarich-secrets
+
+volumes:
+  public:
+    create: true
+    accessMode: ReadWriteMany
+    size: 512Mi
+    mountPath: /var/app/public
+  watched:
+    create: true
+    accessMode: ReadWriteMany
+    size: 512Mi
+    mountPath: /var/app/tmp/imports/watched
+  storage:
+    create: true
+    accessMode: ReadWriteMany
+    size: 512Mi
+    mountPath: /var/app/storage
+
+resources:
+  requests: {cpu: 100m, memory: 512Mi}
+  limits: {cpu: 1000m, memory: 512Mi}
+
+# The Host header must be one of APPLICATION_HOSTS (localhost is appended there), or
+# Rails host authorization answers 403.
+probes:
+  startupProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 3000
+      httpHeaders:
+        - {name: Host, value: localhost}
+    periodSeconds: 10
+    failureThreshold: 30
+  readinessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 3000
+      httpHeaders:
+        - {name: Host, value: localhost}
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 3000
+      httpHeaders:
+        - {name: Host, value: localhost}
+    periodSeconds: 30
+    failureThreshold: 5
+
+sidekiq:
+  app:
+    name: dawarich-sidekiq
+  image:
+    repository: docker.io/freikin/dawarich
+    tag: "1.15.3"
+    pullPolicy: IfNotPresent
+  command: [sidekiq-entrypoint.sh]
+  extraEnvTemplate: dawarich.env
+  # Same claims as the web component's, which owns them.
+  volumes:
+    public:
+      claimName: dawarich-public-pvc
+      mountPath: /var/app/public
+    watched:
+      claimName: dawarich-watched-pvc
+      mountPath: /var/app/tmp/imports/watched
+    storage:
+      claimName: dawarich-storage-pvc
+      mountPath: /var/app/storage
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {cpu: 1000m, memory: 512Mi}
+  probes:
+    startupProbe:
+      exec:
+        command: [sh, -c, pgrep -f sidekiq]
+      periodSeconds: 10
+      failureThreshold: 30
+    livenessProbe:
+      exec:
+        command: [sh, -c, pgrep -f sidekiq]
+      periodSeconds: 30
+      failureThreshold: 5
+
+postgis:
+  app:
+    name: dawarich-postgis
+    port: 5432
+  image:
+    repository: docker.io/postgis/postgis
+    tag: "17-3.5"
+    pullPolicy: IfNotPresent
+  extraEnvTemplate: dawarich.postgisEnv
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  volumes:
+    data:
+      create: true
+      size: 5Gi
+      mountPath: /var/lib/postgresql/data
+  resources:
+    requests: {cpu: 50m, memory: 512Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+  probes:
+    readinessProbe:
+      exec:
+        command: [sh, -c, 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+      periodSeconds: 10
+    livenessProbe:
+      exec:
+        command: [sh, -c, 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+      periodSeconds: 30
+      failureThreshold: 5
+
+# Backs the Sidekiq job queue; AOF keeps queued jobs across restarts.
+redis:
+  app:
+    name: dawarich-redis
+    port: 6379
+  image:
+    repository: docker.io/library/redis
+    tag: 8.8.3-alpine
+    pullPolicy: IfNotPresent
+  extraEnvTemplate: dawarich.redisEnv
+  args: [redis-server, --requirepass, $(REDIS_PASSWORD), --appendonly, "yes"]
+  volumes:
+    data:
+      create: true
+      size: 512Mi
+      mountPath: /data
+  resources:
+    requests: {cpu: 20m, memory: 128Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+  probes:
+    readinessProbe:
+      exec:
+        command: [sh, -c, 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      periodSeconds: 10
+    livenessProbe:
+      exec:
+        command: [sh, -c, 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      periodSeconds: 30
+      failureThreshold: 5

@@ -66,4 +66,17 @@ resolve OIDC_CLIENT_SECRET --gen 'rand_hex 32'
      --output yaml
 } >> "$PLAIN"
 
+secret_source authentik dawarich-oidc-client
+resolve OIDC_CLIENT_SECRET --gen 'rand_hex 32'
+{
+  echo "---"
+  kubectl create secret generic dawarich-oidc-client \
+    --namespace authentik \
+    --from-literal=OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" \
+    --dry-run=client -o yaml \
+  | kubectl annotate --local -f - \
+     $(reflector_annotations "dawarich") \
+     --output yaml
+} >> "$PLAIN"
+
 secret_finish

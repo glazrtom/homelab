@@ -107,6 +107,13 @@ gatedApps:
     groups: [homelab-users]
     skipPathRegex: |
       ^/(invite/|api/|_next/|static/|favicon)
+  # /api/ is Dawarich's own per-user API-key surface (phone apps, OwnTracks, Overland),
+  # which can't follow an SSO redirect.
+  - slug: dawarich
+    name: Dawarich
+    prefix: dawarich
+    users: [glazrtom]
+    skipPathRegex: ^/api/
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the
@@ -148,6 +155,16 @@ ralllyOidc:
   slug: rallly-oidc
   group: homelab-users
 
+# Browser SSO into Dawarich, on top of its forward-auth gate (the `dawarich` gatedApps
+# entry). Confidential client; secret shared via the dawarich-oidc-client secret
+# (generate-secret.sh), public issuer only. No group of its own: it is bound to that
+# gatedApps entry's access policy, so both gates always admit the same people. clientId
+# and slug must match `oidc` in dawarich/values.yaml.
+dawarichOidc:
+  enabled: true
+  clientId: dawarich
+  slug: dawarich-oidc
+
 # Standalone rather than the Bitnami subchart's metrics sidecar: that one connects to the
 # `postgres` database as the `postgres` role, and this deployment has neither (the stock
 # postgres image creates only `authentik`/`authentik`). The custom query below also has
@@ -185,6 +202,11 @@ authentik:
         valueFrom:
           secretKeyRef:
             name: rallly-oidc-client
+            key: OIDC_CLIENT_SECRET
+      - name: DAWARICH_OIDC_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: dawarich-oidc-client
             key: OIDC_CLIENT_SECRET
 
   authentik:

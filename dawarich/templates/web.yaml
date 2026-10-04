@@ -1,0 +1,4 @@
+{{ include "lib.deployment" . }}
+---
+{{ include "lib.service" . }}
+{{ include "lib.pvc" . }}
