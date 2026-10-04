@@ -31,7 +31,25 @@ initPerms:
     tag: "1.37"
 
 extraEnvTemplate: transmission.env
-sidecarsTemplate: transmission.initPerms
+sidecarsTemplate: transmission.sidecars
+
+# theopsguy/transmission-exporter: speeds, torrent counts, session totals.
+exporter:
+  image:
+    repository: theopsguy/transmission-exporter
+    tag: "0.3.3"
+  port: 19091
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 32Mi
+
+# The exporter image is published for amd64 only; this is forced by the image, not a
+# scheduling preference.
+nodeSelector:
+  kubernetes.io/arch: amd64
 
 securityContext:
   capabilities:

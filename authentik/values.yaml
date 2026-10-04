@@ -124,6 +124,22 @@ excalidashOidc:
   slug: excalidash-oidc
   group: homelab-users
 
+# Standalone rather than the Bitnami subchart's metrics sidecar: that one connects to the
+# `postgres` database as the `postgres` role, and this deployment has neither (the stock
+# postgres image creates only `authentik`/`authentik`). The custom query below also has
+# to run inside the authentik database, where the events table lives.
+postgresExporter:
+  image:
+    repository: quay.io/prometheuscommunity/postgres-exporter
+    tag: v0.20.1
+  port: 9187
+  resources:
+    requests:
+      cpu: 10m
+      memory: 48Mi
+    limits:
+      memory: 48Mi
+
 authentik:
   global:
     # Appended after the chart's own config secret, so these keys win.
@@ -151,6 +167,13 @@ authentik:
       requests:
         cpu: 50m
         memory: 600Mi
+    # The worker serves no metrics Service; its task metrics are exported here too.
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        # Literal copy of global.monitoring.interval.slow - upstream values can't template.
+        interval: 60s
 
   worker:
     resources:

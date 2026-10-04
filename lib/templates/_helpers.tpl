@@ -55,6 +55,9 @@ app: {{ include "lib.fullname" . }}
 - name: {{ $name }}
   configMap:
     name: {{ $c.name }}
+    {{- with $c.defaultMode }}
+    defaultMode: {{ . }}
+    {{- end }}
 {{- end }}
 {{- range $name, $e := .Values.emptyDirVolumes }}
 - name: {{ $name }}

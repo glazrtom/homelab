@@ -9,6 +9,10 @@ app:
   name: jellyfin
   port: 8096
   domainPrefix: jellyfin
+  # Named so the PodMonitor can scrape Jellyfin's own /metrics.
+  ports:
+    - name: http
+      containerPort: 8096
 
 ingress:
   enabled: true
@@ -30,6 +34,35 @@ volumes:
   media:
     claimName: media-pvc
     mountPath: /media
+
+# Runs as root before Jellyfin starts (linuxserver custom-cont-init.d) and turns on its
+# built-in /metrics endpoint, which system.xml ships disabled. defaultMode 493 = 0755,
+# since the init system only runs executable scripts. /metrics sits behind the same
+# forward-auth gate as the rest of the host.
+configMapVolumes:
+  init:
+    name: jellyfin-init
+    mountPath: /custom-cont-init.d
+    defaultMode: 493
+
+# rebelcore/jellyfin-exporter: sessions, transcodes (incl. hardware-accel or not), library
+# counts, task state. Needs an API key (generate-secret.sh). It is a restartPolicy: Always
+# init sidecar, so a missing secret blocks Jellyfin itself from starting - seal it first.
+sidecarsTemplate: jellyfin.exporterContainer
+exporter:
+  image:
+    repository: rebelcore/jellyfin-exporter
+    tag: v1.5.2
+  port: 9594
+  secret:
+    name: jellyfin-exporter
+    key: JELLYFIN_TOKEN
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 32Mi
 
 # Transcode scratch stays off the 2-replica Longhorn config volume: ffmpeg writes GBs
 # per episode, which Longhorn would replicate across nodes.

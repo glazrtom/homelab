@@ -698,13 +698,154 @@
       }
     },
     {
+      "id": 25,
+      "type": "row",
+      "title": "Sign-in and media",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Failed logins (5m)",
+      "description": "Failed Authentik logins in the last 5 minutes. A few are typos; above 5 raises an alert, above 20 a critical one. Details on the Services dashboard.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(authentik_events_recent{action=\"login_failed\"}) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "orange"
+              },
+              {
+                "value": 6,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 26,
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Active Jellyfin transcodes",
+      "description": "Streams Jellyfin is re-encoding right now. Zero is normal when everyone direct-plays.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(jellyfin_transcoding_session_info) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 3,
+                "color": "orange"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 27,
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
       "id": 13,
       "type": "row",
       "title": "Capacity per node",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 15,
         "w": 24,
         "h": 1
       },
@@ -764,7 +905,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 16,
         "w": 6,
         "h": 6
       },
@@ -827,7 +968,7 @@
       "id": 15,
       "gridPos": {
         "x": 6,
-        "y": 11,
+        "y": 16,
         "w": 6,
         "h": 6
       },
@@ -890,7 +1031,7 @@
       "id": 16,
       "gridPos": {
         "x": 12,
-        "y": 11,
+        "y": 16,
         "w": 6,
         "h": 6
       },
@@ -953,7 +1094,7 @@
       "id": 17,
       "gridPos": {
         "x": 18,
-        "y": 11,
+        "y": 16,
         "w": 6,
         "h": 6
       },
@@ -969,7 +1110,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 22,
         "w": 24,
         "h": 1
       },
@@ -1093,7 +1234,7 @@
       "id": 19,
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 23,
         "w": 8,
         "h": 7
       },
@@ -1172,7 +1313,7 @@
       "id": 20,
       "gridPos": {
         "x": 8,
-        "y": 18,
+        "y": 23,
         "w": 8,
         "h": 7
       },
@@ -1257,7 +1398,7 @@
       "id": 21,
       "gridPos": {
         "x": 16,
-        "y": 18,
+        "y": 23,
         "w": 8,
         "h": 7
       },
@@ -1273,7 +1414,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 30,
         "w": 24,
         "h": 1
       },
@@ -1349,7 +1490,7 @@
       "id": 23,
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 31,
         "w": 12,
         "h": 7
       },
@@ -1427,7 +1568,7 @@
       "id": 24,
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 31,
         "w": 12,
         "h": 7
       },

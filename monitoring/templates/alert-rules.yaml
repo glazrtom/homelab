@@ -172,6 +172,49 @@ spec:
           annotations:
             summary: "ArgoCD app {{ "{{" }} $labels.name {{ "}}" }} has been OutOfSync for 30m"
 
+    - name: homelab.auth
+      rules:
+        # authentik_events_recent is a rolling 5-minute count per event action, from the
+        # custom query in authentik/templates/postgres-exporter.yaml - not a counter.
+        - alert: AuthentikLoginFailuresSpike
+          expr: sum(authentik_events_recent{action="login_failed"}) > 5
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $value {{ "}}" }} failed Authentik logins in the last 5 minutes"
+        - alert: AuthentikLoginFailuresFlood
+          expr: sum(authentik_events_recent{action="login_failed"}) > 20
+          labels: { severity: critical }
+          annotations:
+            summary: "{{ "{{" }} $value {{ "}}" }} failed Authentik logins in the last 5 minutes - likely brute force"
+        - alert: AuthentikSuspiciousRequest
+          expr: sum(authentik_events_recent{action="suspicious_request"}) > 0
+          labels: { severity: warning }
+          annotations:
+            summary: "Authentik flagged {{ "{{" }} $value {{ "}}" }} suspicious request(s) in the last 5 minutes"
+        - alert: AuthentikTrafficSpike
+          # The 0.5 req/s floor keeps a near-idle baseline from making any blip a 3x spike.
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{host=~"auth[.].*"}[5m])) > 0.5
+              and
+            sum(rate(nginx_ingress_controller_requests{host=~"auth[.].*"}[5m]))
+              > 3 * avg_over_time(sum(rate(nginx_ingress_controller_requests{host=~"auth[.].*"}[5m]))[1d:5m] offset 1h)
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Traffic to Authentik is over 3x its usual level"
+        - alert: AuthentikOutpostDisconnected
+          expr: authentik_outposts_connected == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "Authentik outpost {{ "{{" }} $labels.outpost {{ "}}" }} has no connected instance - hosts it gates are denied"
+        - alert: PostgresDown
+          expr: pg_up == 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }}'s exporter cannot reach its database"
+
     - name: homelab.storage
       rules:
         - alert: FilesystemReadOnly
