@@ -11,6 +11,10 @@ spec:
     repoURL: https://github.com/glazrtom/homelab.git
     targetRevision: HEAD
     path: rallly
+    helm:
+      valueFiles:
+        - values.yaml
+        - ../global/values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: rallly

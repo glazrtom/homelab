@@ -3,6 +3,9 @@ name: rallly
 description: A Helm chart for Rallly
 version: 0.1.0
 dependencies:
+  - name: lib
+    version: 0.1.0
+    repository: file://../lib
   - name: rallly
     version: 0.1.0-rc.1
     repository: oci://ghcr.io/glazrtom/charts

@@ -101,6 +101,12 @@ gatedApps:
     name: Calibre
     prefix: calibre
     groups: [homelab-users]
+  - slug: rallly
+    name: Rallly
+    prefix: rallly
+    groups: [homelab-users]
+    skipPathRegex: |
+      ^/(invite/|api/|_next/|static/|favicon)
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the
@@ -131,6 +137,15 @@ calibreOidc:
   enabled: true
   clientId: calibre
   slug: calibre-oidc
+  group: homelab-users
+
+# Browser SSO into Rallly, on top of its forward-auth gate (the `rallly` gatedApps
+# entry). Confidential client; secret shared via the rallly-oidc-client secret
+# (generate-secret.sh), public issuer only.
+ralllyOidc:
+  enabled: true
+  clientId: rallly
+  slug: rallly-oidc
   group: homelab-users
 
 # Standalone rather than the Bitnami subchart's metrics sidecar: that one connects to the
@@ -165,6 +180,11 @@ authentik:
         valueFrom:
           secretKeyRef:
             name: excalidash-oidc-client
+            key: OIDC_CLIENT_SECRET
+      - name: RALLLY_OIDC_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: rallly-oidc-client
             key: OIDC_CLIENT_SECRET
 
   authentik:

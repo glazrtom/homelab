@@ -53,4 +53,17 @@ resolve OIDC_CLIENT_SECRET --gen 'rand_hex 32'
      --output yaml
 } >> "$PLAIN"
 
+secret_source authentik rallly-oidc-client
+resolve OIDC_CLIENT_SECRET --gen 'rand_hex 32'
+{
+  echo "---"
+  kubectl create secret generic rallly-oidc-client \
+    --namespace authentik \
+    --from-literal=OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" \
+    --dry-run=client -o yaml \
+  | kubectl annotate --local -f - \
+     $(reflector_annotations "rallly") \
+     --output yaml
+} >> "$PLAIN"
+
 secret_finish

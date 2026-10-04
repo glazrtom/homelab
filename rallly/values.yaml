@@ -5,19 +5,39 @@
 # ArgoCD (`helm template`), so it would mint fresh random credentials on every
 # render and break the already-initialised Postgres/Garage data.
 
+namespace: rallly
+
+app:
+  name: rallly
+  domainPrefix: rallly
+
+# The upstream chart's Service (release name == chart name, so just "rallly").
+service:
+  name: rallly
+  port: 80
+
+ingress:
+  enabled: true
+  external: true
+  auth: true
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+
 rallly:
   baseUrl: "https://rallly.glazrtom.cz"
   supportEmail: "glazrtom.homelab@gmail.com"
   existingSecret: rallly
   ingress:
+    enabled: false
+  emailLogin:
+    enabled: false
+  oidc:
     enabled: true
-    className: nginx-external
-    host: "rallly.glazrtom.cz"
-    annotations:
-      nginx.ingress.kubernetes.io/enable-global-auth: "false"
-      nginx.ingress.kubernetes.io/limit-rps: "20"
-      nginx.ingress.kubernetes.io/limit-connections: "20"
-      nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    name: Authentik
+    discoveryUrl: "https://auth.glazrtom.cz/application/o/rallly-oidc/.well-known/openid-configuration"
+    clientId: rallly
   postgresql:
     existingSecret: rallly-postgresql
   garage:
@@ -34,3 +54,9 @@ rallly:
         secretKeyRef:
           name: smtp-credentials
           key: SMTP_PWD
+    # Reflected from authentik (authentik/generate-secret.sh).
+    - name: OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: rallly-oidc-client
+          key: OIDC_CLIENT_SECRET
