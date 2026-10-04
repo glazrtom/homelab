@@ -22,8 +22,8 @@ ArgoCD ever creates that PVC.
   secret fixups" below for the consequences.
 - Four credentials are human-supplied and have no local fallback if the plaintext is gone: GHCR
   PAT (`base/generate-secret.sh`), Windscribe username/password
-  (`base/generate-windscribe-secret.sh`), the Gmail SMTP app password
-  (`base/generate-smtp-secret.sh`), and the Backblaze B2 keyID/applicationKey
+  (`base/generate-windscribe-secret.sh`), the per-app Gmail SMTP app
+  passwords (`rallly/generate-secret.sh`, `dawarich/generate-secret.sh`), and the Backblaze B2 keyID/applicationKey
   (`longhorn/generate-b2-secret.sh`). **B2's applicationKey is shown once, at creation** — if both
   the plaintext and the cluster are gone, a new B2 key must be minted before anything can be
   restored at all, since the old key is unrecoverable and the bucket is otherwise inaccessible.

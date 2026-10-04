@@ -7,8 +7,8 @@ description: This skill should be used when creating, rotating, or resealing a s
 
 **Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
 secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`,
-`base/windscribe-sealed.yaml`, `base/smtp-sealed.yaml`). Every `generate-*-secret.sh`
-(`authentik/`, `base/` ×3, `cloudflare/`, `longhorn/`, `rallly/`) sources
+`base/windscribe-sealed.yaml`). Every `generate-*-secret.sh`
+(`authentik/`, `base/` ×2, `cloudflare/`, `longhorn/`, `rallly/`, `dawarich/`) sources
 `scripts/secretlib.sh` (which itself sources `scripts/seal.sh`) and declares its keys via
 `resolve KEY [--gen ...] [--prompt ...] [--static ...] [--from secret/ns] [--unsafe-force]
 [--follow-up ...]`. Each key resolves independently, in order: the git-ignored local
@@ -56,9 +56,8 @@ Authentik's blueprint (`EXCALIDASH_OIDC_CLIENT_SECRET`) and ExcaliDash's backend
 out of the live/local `.dockerconfigjson` blob via `jq`. `base/generate-windscribe-secret.sh`
 does the same for the `windscribe-auth` VPN credential (namespace `default`), mirroring it
 into `media` (prowlarr's gluetun sidecar) and `transmission` — neither of those charts owns
-the secret itself, they only reference `windscribe-auth` by name. `base/generate-smtp-secret.sh`
-also checks the `rallly`/`rallly` Secret (`--from rallly/rallly`, its pre-migration source
-of truth) before falling back to a prompt. `rallly/generate-secret.sh` is the one script
+the secret itself, they only reference `windscribe-auth` by name. SMTP passwords are per
+app, prompted by each app's own script — see the `smtp` skill. `rallly/generate-secret.sh` is the one script
 covering three Secrets (`rallly-postgresql`, `rallly-garage`, `rallly`) out of one
 plaintext file — see its `secret_source` calls.
 

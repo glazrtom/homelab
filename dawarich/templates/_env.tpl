@@ -10,7 +10,7 @@ values.yaml can't template.
 {{- $public := printf "%s.%s" $prefix $v.global.domain.public.suffix -}}
 {{- $internal := printf "%s.%s" $prefix $v.global.domain.internal.suffix -}}
 {{- $secretEnv := dict -}}
-{{- range $key := list "SECRET_KEY_BASE" "DATABASE_USERNAME" "DATABASE_PASSWORD" "REDIS_PASSWORD" -}}
+{{- range $key := list "SECRET_KEY_BASE" "DATABASE_USERNAME" "DATABASE_PASSWORD" "REDIS_PASSWORD" "SMTP_PASSWORD" -}}
 {{- $_ := set $secretEnv $key (dict "name" $v.secretName "key" $key) -}}
 {{- end -}}
 {{/* Owned by authentik/generate-secret.sh and reflected into this namespace. */}}
@@ -26,6 +26,12 @@ values.yaml can't template.
   "OIDC_AUTO_REGISTER" "true"
   "ALLOW_EMAIL_PASSWORD_REGISTRATION" "false"
   "ALLOW_EMAIL_PASSWORD_LOGIN" "false"
+  "DOMAIN" $public
+  "SMTP_SERVER" $v.smtp.server
+  "SMTP_PORT" $v.smtp.port
+  "SMTP_DOMAIN" $v.global.domain.public.suffix
+  "SMTP_USERNAME" $v.smtp.username
+  "SMTP_FROM" $v.smtp.from
 ) -}}
 {{- include "lib.env" (dict "secretEnv" $secretEnv) -}}
 {{- include "lib.env" (dict "env" $env) -}}

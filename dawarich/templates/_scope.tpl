@@ -10,6 +10,7 @@ Returns YAML; callers pipe it through fromYaml. Takes: root (the chart's .), com
   "namespace" $root.Values.namespace
   "settings" $root.Values.settings
   "oidc" $root.Values.oidc
+  "smtp" $root.Values.smtp
   "secretName" $root.Values.secretName
   "app" (dict "domainPrefix" $root.Values.app.domainPrefix) -}}
 {{- toYaml (mergeOverwrite (deepCopy (index $root.Values .component)) $shared) -}}

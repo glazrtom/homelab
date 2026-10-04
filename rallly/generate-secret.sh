@@ -38,7 +38,8 @@ resolve CRON_SECRET --gen 'rand_alnum 32'
 # The chart reads these two from this Secret (optional keys), so they can't also be
 # extraEnv: a duplicate env name breaks ArgoCD's diff and the API server keeps only
 # the first entry anyway.
-resolve SMTP_PWD --from smtp-credentials
+resolve SMTP_PWD --prompt 'Rallly Gmail app password' --unsafe-force \
+  --follow-up 'revoke the old app password in the Google account'
 resolve OIDC_CLIENT_SECRET --from rallly-oidc-client/authentik
 secret_literal_args
 {

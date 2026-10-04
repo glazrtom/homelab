@@ -234,9 +234,8 @@ resolve() {
     fi
 
     # Always try the secret's own live value too (not just when --from is unset):
-    # an explicit --from is a *migration* source (e.g. smtp's pre-migration
-    # rallly secret), which shouldn't stop this secret's own already-live copy of
-    # itself from being found once it exists.
+    # an explicit --from is a *migration* source, which shouldn't stop this secret's
+    # own already-live copy of itself from being found once it exists.
     if [ -z "$value" ]; then
       value="$(live_value "$CURRENT_NS" "$CURRENT_SECRET" "$key")"
       [ -n "$value" ] && source_desc="live cluster"

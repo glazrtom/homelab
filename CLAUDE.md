@@ -209,6 +209,8 @@ self-explanatory names; comment only non-obvious intent.
   its constraints. For a live-state usage/backup-health *report* instead of a config
   change, use `disk-report`.
 - **`secrets`** — Sealed Secrets mechanics, each `generate-*-secret.sh`, rotation.
+- **`smtp`** — outbound email: the Gmail relay, per-app app passwords, wiring a new app,
+  rotation, test sends.
 - **`ansible-provisioning`** — the two-stage playbook order, roles, provisioning a fresh
   host.
 - **`argocd-ops`** — deploy-workflow failures, `argo-ci` access setup, the

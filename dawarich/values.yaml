@@ -54,6 +54,13 @@ oidc:
   # Minted by authentik/generate-secret.sh and reflected into this namespace.
   secretName: dawarich-oidc-client
 
+# Gmail relay; the app password is this app's own (SMTP_PASSWORD in dawarich-secrets).
+smtp:
+  server: smtp.gmail.com
+  port: "587"
+  username: glazrtom.homelab@gmail.com
+  from: glazrtom.homelab@gmail.com
+
 secretName: dawarich-secrets
 
 volumes:

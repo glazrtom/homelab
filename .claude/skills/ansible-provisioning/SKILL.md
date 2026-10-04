@@ -43,7 +43,7 @@ ansible-playbook playbooks/apps.yml -K      # stage 2: workload apps
   under `applications/apps/`).
 - The `secrets` role always runs, looping over the generate scripts of every app in its
   `secrets_items` list — currently 7 scripts across `authentik/`, `base/` (GHCR,
-  Windscribe, SMTP), `rallly/`, and `longhorn/` (B2). It only prompts for a script's human-supplied values when that script has no local
+  Windscribe), `rallly/` and `dawarich/` (SMTP), and `longhorn/` (B2). It only prompts for a script's human-supplied values when that script has no local
   plaintext yet; if the plaintext is already there, it's assumed correct and just
   resealed as-is, no prompt (leave a prompt blank to skip that one and keep its
   committed sealed file instead). It then commits and pushes just the sealed files that
