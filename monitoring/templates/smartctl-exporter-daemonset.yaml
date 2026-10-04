@@ -24,6 +24,10 @@ spec:
       hostPID: true
       containers:
         - name: smartctl-exporter
+          # Only the NVMe disk: the sdX devices on this node are Longhorn's iSCSI
+          # volumes, which have no SMART data of their own.
+          args:
+            - --smartctl.device-include=^nvme
           image: "{{ .Values.smartctlExporter.image.repository }}:{{ .Values.smartctlExporter.image.tag }}"
           securityContext:
             privileged: true
@@ -45,6 +49,8 @@ kind: Service
 metadata:
   name: smartctl-exporter
   namespace: {{ .Values.namespace }}
+  labels:
+    app: smartctl-exporter
 spec:
   selector:
     app: smartctl-exporter

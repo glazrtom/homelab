@@ -1,6 +1,6 @@
 {{/*
-Sidecar: per-app Prometheus metrics (health issues, queue size, indexer failures for
-prowlarr). Shared across prowlarr/radarr/sonarr - CONFIG points exportarr at the same
+Sidecar: per-app Prometheus metrics (health issues, indexer failures for prowlarr; queue
+size via ENABLE_ADDITIONAL_METRICS). Shared across prowlarr/radarr/sonarr - CONFIG points exportarr at the same
 config.xml already mounted for the main container, so it reads the API key straight
 out of it instead of needing a secret of its own.
 */}}
@@ -14,6 +14,8 @@ out of it instead of needing a secret of its own.
       value: {{ .Values.global.exportarr.port | quote }}
     - name: URL
       value: "http://localhost:{{ .Values.app.port }}"
+    - name: ENABLE_ADDITIONAL_METRICS
+      value: "true"
     - name: CONFIG
       value: "{{ .Values.volumes.config.mountPath }}/config.xml"
   ports:

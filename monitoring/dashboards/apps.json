@@ -5,7 +5,6 @@
     "homelab",
     "apps"
   ],
-  "timezone": "",
   "schemaVersion": 39,
   "version": 1,
   "editable": true,
@@ -14,390 +13,1163 @@
     "from": "now-6h",
     "to": "now"
   },
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Homelab",
+      "tags": [
+        "homelab"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(kube_node_info, node)",
+          "refId": "v"
+        },
+        "definition": "label_values(kube_node_info, node)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(kube_pod_info, namespace)",
+          "refId": "v"
+        },
+        "definition": "label_values(kube_pod_info, namespace)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(kube_pod_info{namespace=~\"$namespace\", node=~\"$node\"}, pod)",
+          "refId": "v"
+        },
+        "definition": "label_values(kube_pod_info{namespace=~\"$namespace\", node=~\"$node\"}, pod)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "topn",
+        "label": "Show top",
+        "type": "custom",
+        "query": "5,10,20",
+        "multi": false,
+        "includeAll": false,
+        "options": [
+          {
+            "text": "5",
+            "value": "5",
+            "selected": false
+          },
+          {
+            "text": "10",
+            "value": "10",
+            "selected": true
+          },
+          {
+            "text": "20",
+            "value": "20",
+            "selected": false
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "10",
+          "value": "10"
+        }
+      }
+    ]
+  },
   "panels": [
     {
-      "id": 0,
-      "title": "CPU usage by app",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 8,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (namespace,pod) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace!~\"kube-system|monitoring\"}[5m]))",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
-    },
-    {
       "id": 1,
-      "title": "Memory working set vs limit",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 8,
-        "y": 0,
-        "w": 8,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "container_memory_working_set_bytes{container!=\"\"} / on(namespace,pod,container) kube_pod_container_resource_limits{resource=\"memory\"}",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 2,
-      "title": "CPU throttling %",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 8,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "rate(container_cpu_cfs_throttled_periods_total{container!=\"\"}[5m]) / on(namespace,pod,container) rate(container_cpu_cfs_periods_total{container!=\"\"}[5m])",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 800,
-      "title": "Uptime %  (7d)",
-      "type": "timeseries",
+      "type": "row",
+      "title": "Service availability",
+      "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 8,
-        "w": 8,
-        "h": 8
+        "y": 0,
+        "w": 24,
+        "h": 1
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Probes",
+      "description": "Black-box checks of each service from inside the cluster. Up = the last check succeeded; 7d uptime = share of checks that succeeded in the last week.",
       "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "probe_success",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
           "expr": "avg_over_time(probe_success[7d])",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit"
+          "legendFormat": "",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
         },
-        "overrides": []
-      }
-    },
-    {
-      "id": 801,
-      "title": "Response time",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 8,
-        "y": 8,
-        "w": 8,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
           "expr": "probe_duration_seconds",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
+          "legendFormat": "",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "instance",
+                "Value #A",
+                "Value #B",
+                "Value #C"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "instance": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3
+            },
+            "renameByName": {
+              "instance": "Target",
+              "Value #A": "Status",
+              "Value #B": "Uptime 7d",
+              "Value #C": "Response time"
+            }
+          }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 802,
-      "title": "ingress-nginx requests / 5xx",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 16,
-        "y": 8,
-        "w": 8,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests[5m]))",
-          "legendFormat": "total",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{status=~\"5..\"}[5m]))",
-          "legendFormat": "5xx",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
-    },
-    {
-      "id": 1600,
-      "title": "ingress-nginx p95 latency",
-      "type": "timeseries",
+          "noValue": "No data (probes not scraped yet)"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "DOWN",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "UP",
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uptime 7d"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "red"
+                    },
+                    {
+                      "value": 0.95,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 0.99,
+                      "color": "green"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Response time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "green"
+                    },
+                    {
+                      "value": 1,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 3,
+                      "color": "red"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Status",
+            "desc": false
+          }
+        ]
+      },
+      "id": 2,
       "gridPos": {
         "x": 0,
-        "y": 16,
-        "w": 8,
-        "h": 8
+        "y": 1,
+        "w": 16,
+        "h": 9
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cloudflare tunnel connections",
+      "description": "Connections from the cloudflared replicas to Cloudflare's edge. Each replica keeps 4, so 8 is full health; 0 means the site is unreachable from the internet.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le,ingress) (rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "{{ingress}}",
+          "expr": "sum(cloudflared_tunnel_ha_connections)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "orange"
+              },
+              {
+                "value": 8,
+                "color": "green"
+              }
+            ]
+          },
+          "noValue": "No data (not scraped yet)"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 8,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Resource use",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU use (% of node)",
+      "description": "Each pod's CPU use as a share of the selected nodes' total CPU. 100% = every core of the node(s).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk($topn, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})))",
+          "legendFormat": "{{namespace}}/{{pod}}",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
         },
         "overrides": []
-      }
-    },
-    {
-      "id": 1601,
-      "title": "ingress TLS cert expiry",
-      "type": "timeseries",
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 5,
       "gridPos": {
-        "x": 8,
-        "y": 16,
-        "w": 8,
+        "x": 0,
+        "y": 11,
+        "w": 12,
         "h": 8
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory use (% of limit)",
+      "description": "Each container's memory as a share of its memory limit. Near 100% means it is about to be OOM-killed.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(nginx_ingress_controller_ssl_expire_time_seconds - time()) / 86400",
+          "expr": "topk($topn, max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\"}))",
+          "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.7,
+                "color": "orange"
+              },
+              {
+                "value": 0.9,
+                "color": "red"
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory use (bytes)",
+      "description": "Working-set memory of the heaviest pods.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk($topn, sum by (namespace, pod) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}))",
+          "legendFormat": "{{namespace}}/{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "CPU throttling (worst offenders)",
+      "description": "Share of CPU time each container was held back by its CPU limit, averaged over the selected time range. Only containers above 25% are listed; empty means nothing is throttled.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk($topn, avg_over_time((sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])) / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])))[$__range:5m]) > 0.25)",
+          "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "orange"
+              },
+              {
+                "value": 0.6,
+                "color": "red"
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "noValue": "Nothing throttled"
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "minVizHeight": 12,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Web traffic (ingress)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests per second by host",
+      "description": "Requests handled by the ingress controllers, per hostname.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk($topn, sum by (host) (rate(nginx_ingress_controller_requests[5m])))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "d"
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
         },
         "overrides": []
-      }
-    },
-    {
-      "id": 1602,
-      "title": "cloudflared HA connections",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 16,
-        "y": 16,
-        "w": 8,
-        "h": 8
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "cloudflared_tunnel_ha_connections",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
         }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
-    },
-    {
-      "id": 2400,
-      "title": "ArgoCD apps by sync/health status",
-      "type": "timeseries",
+      },
+      "id": 10,
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 28,
         "w": 8,
         "h": 8
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Server error rate by host",
+      "description": "Share of requests that ended in a 5xx server error, per hostname. Empty means no host returned a 5xx.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count by (sync_status) (argocd_app_info)",
-          "legendFormat": "sync: {{sync_status}}",
+          "expr": "sum by (host) (rate(nginx_ingress_controller_requests{status=~\"5..\"}[5m])) / sum by (host) (rate(nginx_ingress_controller_requests[5m]))",
+          "legendFormat": "{{host}}",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "count by (health_status) (argocd_app_info)",
-          "legendFormat": "health: {{health_status}}",
-          "refId": "B"
         }
       ],
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.01,
+                "color": "orange"
+              },
+              {
+                "value": 0.05,
+                "color": "red"
+              }
+            ]
+          },
+          "min": 0,
+          "noValue": "No server errors",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
         "overrides": []
-      }
-    },
-    {
-      "id": 2401,
-      "title": "Pi-hole queries/s and blocked %",
-      "type": "timeseries",
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 11,
       "gridPos": {
         "x": 8,
-        "y": 24,
+        "y": 28,
         "w": 8,
         "h": 8
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Response time p95 by ingress",
+      "description": "95% of requests finish faster than this. Streaming services (Jellyfin) naturally look slow.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(pihole_dns_queries_today[5m])",
-          "legendFormat": "queries/s",
+          "expr": "topk($topn, histogram_quantile(0.95, sum by (le, ingress) (rate(nginx_ingress_controller_request_duration_seconds_bucket[5m]))))",
+          "legendFormat": "{{ingress}}",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "pihole_ads_percentage_today",
-          "legendFormat": "blocked %",
-          "refId": "B"
         }
       ],
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
         "overrides": []
-      }
-    },
-    {
-      "id": 2402,
-      "title": "*arr queue / health issues",
-      "type": "timeseries",
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 12,
       "gridPos": {
         "x": 16,
-        "y": 24,
+        "y": 28,
         "w": 8,
         "h": 8
       },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
+      }
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Applications",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 1
       },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Pi-hole queries per second",
+      "description": "DNS queries answered by Pi-hole.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "pihole_request_rate",
+          "legendFormat": "queries/s",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 14,
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Pi-hole blocked today",
+      "description": "Share of today's DNS queries that Pi-hole blocked (ads, trackers).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "pihole_ads_percentage_today / 100",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 15,
+      "gridPos": {
+        "x": 8,
+        "y": 37,
+        "w": 4,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "*arr health issues",
+      "description": "Problems the apps report on their own health page (indexers down, no download client...). 0 is good.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sonarr_system_health_issues or radarr_system_health_issues or prowlarr_system_health_issues",
+          "legendFormat": "{{job}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 16,
+      "gridPos": {
+        "x": 12,
+        "y": 37,
+        "w": 6,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "*arr download queue",
+      "description": "Items each app is currently waiting on from the download client.",
       "targets": [
         {
           "datasource": {
@@ -405,22 +1177,52 @@
             "uid": "prometheus"
           },
           "expr": "sonarr_queue_total or radarr_queue_total",
-          "legendFormat": "queue",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sonarr_health_issues or radarr_health_issues or prowlarr_health_issues",
-          "legendFormat": "health issues",
-          "refId": "B"
+          "legendFormat": "{{job}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "noValue": "No data (not scraped yet)"
+        },
         "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 18,
+        "y": 37,
+        "w": 6,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       }
     }
   ]

@@ -186,15 +186,15 @@ spec:
           annotations:
             summary: "PVC {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} is above 85% full"
         - alert: LonghornVolumeDegraded
-          # robustness is a label, not the value (always 1) - see
-          # longhorn/templates/servicemonitor.yaml's target.
-          expr: longhorn_volume_robustness{robustness="degraded"} == 1
+          # One-hot enum: the state is the `state` label, the value is 1 for the
+          # volume's current state and 0 for the other three.
+          expr: longhorn_volume_robustness{state="degraded"} == 1
           for: 30m
           labels: { severity: warning }
           annotations:
             summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is degraded (lost a replica)"
         - alert: LonghornVolumeFaulted
-          expr: longhorn_volume_robustness{robustness="faulted"} == 1
+          expr: longhorn_volume_robustness{state="faulted"} == 1
           labels: { severity: critical }
           annotations:
             summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is faulted"
@@ -202,10 +202,10 @@ spec:
           # No "age since last success" gauge exists upstream - Gatus's longhorn-daily
           # heartbeat (gatus/values.yaml) already covers that as "no report arrived".
           # This catches a backup that ran and errored, which the heartbeat alone won't.
-          expr: longhorn_backup_state{state="Error"} == 1
+          expr: longhorn_backup_state == 4  # Longhorn encodes the state as a number: 4 = Error
           labels: { severity: warning }
           annotations:
-            summary: "Longhorn backup {{ "{{" }} $labels.backup_name {{ "}}" }} of volume {{ "{{" }} $labels.backup_volume {{ "}}" }} failed"
+            summary: "Longhorn backup {{ "{{" }} $labels.backup {{ "}}" }} of volume {{ "{{" }} $labels.volume {{ "}}" }} failed"
         - alert: SmartDiskFailing
           expr: smartctl_device_smart_status == 0
           labels: { severity: critical }

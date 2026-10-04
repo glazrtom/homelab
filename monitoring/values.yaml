@@ -275,6 +275,9 @@ kube-prometheus-stack:
       affinity: *workerAffinity
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
+      # Same for the blackbox Probe CRs (templates/probes.yaml) - without this only
+      # probes labelled release: monitoring are scraped, and ours carry no labels.
+      probeSelectorNilUsesHelmValues: false
       # Tier B default - everything not overridden per-target above inherits this.
       # Object-state targets (kube-state-metrics, Longhorn, ArgoCD, MetalLB,
       # cloudflared, gatus, self-monitoring) change on the scale of minutes; 15s

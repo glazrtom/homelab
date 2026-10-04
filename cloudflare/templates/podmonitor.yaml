@@ -11,7 +11,7 @@ spec:
     matchLabels:
       app: cloudflared
   podMetricsEndpoints:
-    - portNumber: 3333
+    - port: metrics
       interval: {{ .Values.global.monitoring.interval.slow }}
       metricRelabelings:
         - sourceLabels: [__name__]

@@ -40,6 +40,9 @@ spec:
             - run
             - --token-file
             - /etc/cloudflared/config/token
+          ports:
+            - name: metrics
+              containerPort: 3333
           livenessProbe:
             httpGet:
               path: /ready
