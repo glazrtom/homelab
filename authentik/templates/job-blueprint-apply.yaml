@@ -55,6 +55,11 @@ spec:
                 secretKeyRef:
                   name: excalidash-oidc-client
                   key: OIDC_CLIENT_SECRET
+            - name: RALLLY_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: rallly-oidc-client
+                  key: OIDC_CLIENT_SECRET
           volumeMounts:
             - name: blueprints-cm-authentik-blueprints
               mountPath: /blueprints/mounted/cm-authentik-blueprints
