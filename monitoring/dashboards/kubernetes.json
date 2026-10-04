@@ -751,7 +751,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
+          "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\",node=~\"$node\"} * on (namespace, pod, uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
           "legendFormat": "{{node}} requests",
           "refId": "A"
         },
@@ -760,7 +760,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (node) (kube_pod_container_resource_limits{resource=\"cpu\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
+          "expr": "sum by (node) (kube_pod_container_resource_limits{resource=\"cpu\",node=~\"$node\"} * on (namespace, pod, uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
           "legendFormat": "{{node}} limits",
           "refId": "B"
         },
@@ -877,7 +877,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"memory\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
+          "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"memory\",node=~\"$node\"} * on (namespace, pod, uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
           "legendFormat": "{{node}} requests",
           "refId": "A"
         },
@@ -886,7 +886,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (node) (kube_pod_container_resource_limits{resource=\"memory\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
+          "expr": "sum by (node) (kube_pod_container_resource_limits{resource=\"memory\",node=~\"$node\"} * on (namespace, pod, uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
           "legendFormat": "{{node}} limits",
           "refId": "B"
         },
