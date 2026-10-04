@@ -217,7 +217,9 @@ authentik:
     resources:
       requests:
         cpu: 50m
-        memory: 600Mi
+        memory: 1Gi
+      limits:
+        memory: 1Gi
     # The worker serves no metrics Service; its task metrics are exported here too.
     metrics:
       enabled: true
@@ -230,7 +232,9 @@ authentik:
     resources:
       requests:
         cpu: 100m
-        memory: 320Mi
+        memory: 512Mi
+      limits:
+        memory: 512Mi
 
   # Mounted into the worker at /blueprints/mounted/cm-<name>, discovered hourly and
   # on worker start.
@@ -257,4 +261,6 @@ authentik:
       resources:
         requests:
           cpu: 50m
-          memory: 200Mi
+          memory: 512Mi
+        limits:
+          memory: 512Mi

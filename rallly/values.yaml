@@ -38,10 +38,31 @@ rallly:
     name: Authentik
     discoveryUrl: "https://auth.glazrtom.cz/application/o/rallly-oidc/.well-known/openid-configuration"
     clientId: rallly
+  resources:
+    requests:
+      cpu: 200m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
   postgresql:
     existingSecret: rallly-postgresql
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 256Mi
   garage:
     existingSecret: rallly-garage
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 128Mi
   smtp:
     host: "smtp.gmail.com"
     port: 587

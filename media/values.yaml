@@ -42,6 +42,8 @@ prowlarr:
     requests:
       cpu: 20m
       memory: 256Mi
+    limits:
+      memory: 256Mi
   vpn:
     image: qmcgaw/gluetun:v3.41.3
     env:
@@ -54,7 +56,9 @@ prowlarr:
     resources:
       requests:
         cpu: 10m
-        memory: 48Mi
+        memory: 128Mi
+      limits:
+        memory: 128Mi
     secretEnv:
       OPENVPN_USER:
         name: windscribe-auth
@@ -80,6 +84,8 @@ radarr:
   resources:
     requests:
       cpu: 20m
+      memory: 256Mi
+    limits:
       memory: 256Mi
   volumes:
     config:
@@ -108,6 +114,8 @@ sonarr:
   resources:
     requests:
       cpu: 20m
+      memory: 256Mi
+    limits:
       memory: 256Mi
   volumes:
     config:
