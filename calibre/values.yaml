@@ -1,23 +1,59 @@
-replicaCount: 1
 namespace: calibre
 
 image:
-  repository: linuxserver/calibre-web
-  tag: latest
+  repository: crocodilestick/calibre-web-automated
+  tag: "v4.0.8"
   pullPolicy: IfNotPresent
 
-domainPrefix: calibre
+app:
+  name: calibre
+  port: 8083
+  domainPrefix: calibre
 
-# nginx-internal denies by default; calibre has no gatedApps entry and its ingress is
-# hand-written (not lib.ingress), so it opts out explicitly.
+# Forward-auth gated like every other app, so CWA's own login page is never exposed. Kobo/OPDS
+# clients can't follow the redirect and are locked out. CWA's OIDC login (calibreOidc in
+# authentik/values.yaml) then rides the existing Authentik session.
 ingress:
-  annotations:
-    nginx.ingress.kubernetes.io/enable-global-auth: "false"
+  enabled: true
+  external: true
+  auth: true
 
 volumes:
   config:
+    create: true
     size: 1Gi
-    path: /mnt/storage/config/calibre
-  books:
-    size: 100Gi
-    path: /mnt/storage/media/books
+    storageClassName: longhorn
+    mountPath: /config
+  # Own RWO volume rather than shared-media: metadata.db is SQLite, which doesn't belong on NFS.
+  library:
+    create: true
+    size: 5Gi
+    storageClassName: longhorn
+    mountPath: /calibre-library
+
+# CWA deletes files once imported; uploads go through the web UI.
+emptyDirVolumes:
+  ingest:
+    mountPath: /cwa-book-ingest
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+probes:
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 8083
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 8083
+    initialDelaySeconds: 120
+    periodSeconds: 30

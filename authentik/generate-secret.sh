@@ -4,7 +4,7 @@
 # live cluster, then a prompt/generator - so adding a new key never re-rolls an
 # existing one, and losing the git-ignored secrets/ dir recovers from the running
 # cluster instead of minting fresh values. AUTHENTIK_POSTGRESQL__PASSWORD /
-# AUTHENTIK_SECRET_KEY / LDAP_BIND_KEY / both Jellyfin OIDC client secrets are
+# AUTHENTIK_SECRET_KEY / LDAP_BIND_KEY / the Jellyfin and Calibre OIDC client secrets are
 # --unsafe-force: re-rolling them breaks a running install (authentik<->postgres
 # auth, all sessions, the LDAP outpost provider, Jellyfin's PVC-stored plugin
 # config respectively), so --force skips them - only `--force-key NAME` rolls one.
@@ -31,6 +31,8 @@ resolve JELLYFIN_OIDC_CLIENT_SECRET --gen 'rand_hex 32' --unsafe-force \
 resolve JELLYFIN_OIDC_INTERNAL_CLIENT_ID --gen 'rand_hex 16' --unsafe-force
 resolve JELLYFIN_OIDC_INTERNAL_CLIENT_SECRET --gen 'rand_hex 32' --unsafe-force \
   --follow-up "pinned into Jellyfin's PVC-stored plugin config"
+resolve CALIBRE_OIDC_CLIENT_SECRET --gen 'rand_hex 32' --unsafe-force \
+  --follow-up "pinned into Calibre-Web Automated's PVC-stored OAuth config"
 
 secret_literal_args
 kubectl create secret generic authentik-secrets \

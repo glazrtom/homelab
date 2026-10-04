@@ -103,6 +103,10 @@
       "sourceUrl": "https://github.com/Prowlarr/Prowlarr"
     },
     {
+      "matchDepNames": ["crocodilestick/calibre-web-automated"],
+      "sourceUrl": "https://github.com/crocodilestick/Calibre-Web-Automated"
+    },
+    {
       "matchDepNames": ["sealed-secrets"],
       "sourceUrl": "https://github.com/bitnami-labs/sealed-secrets"
     },

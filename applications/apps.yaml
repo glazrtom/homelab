@@ -11,8 +11,6 @@ spec:
     repoURL: https://github.com/glazrtom/homelab.git
     targetRevision: HEAD
     path: applications/apps
-    directory:
-      exclude: "calibre.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

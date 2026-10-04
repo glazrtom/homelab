@@ -47,7 +47,7 @@ users:
 #
 # There is deliberately no catch-all provider. A host missing from this list, or
 # renamed without updating it, matches nothing and the outpost denies it. Hosts that
-# must not be gated at all (calibre, authentik itself) opt out explicitly with
+# must not be gated at all (authentik itself) opt out explicitly with
 # ingress.auth: false.
 gatedApps:
   - slug: jellyfin
@@ -97,6 +97,10 @@ gatedApps:
     name: ExcaliDash
     prefix: excalidash
     groups: [homelab-users]
+  - slug: calibre
+    name: Calibre
+    prefix: calibre
+    groups: [homelab-users]
 
 # Browser SSO into ArgoCD itself, layered on top of its forward-auth gate above (the
 # `argocd` gatedApps entry). Public client (no client_secret, PKCE instead) so the
@@ -118,6 +122,15 @@ excalidashOidc:
   enabled: true
   clientId: excalidash
   slug: excalidash-oidc
+  group: homelab-users
+
+# Browser SSO into Calibre-Web Automated, on top of its forward-auth gate (the `calibre`
+# gatedApps entry). Confidential client; CWA keeps its OAuth settings in its own DB, so
+# the secret (authentik-secrets) is pasted into its admin UI once.
+calibreOidc:
+  enabled: true
+  clientId: calibre
+  slug: calibre-oidc
   group: homelab-users
 
 # Standalone rather than the Bitnami subchart's metrics sidecar: that one connects to the
