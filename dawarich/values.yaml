@@ -74,8 +74,8 @@ volumes:
     mountPath: /var/app/storage
 
 resources:
-  requests: {cpu: 100m, memory: 512Mi}
-  limits: {cpu: 1000m, memory: 512Mi}
+  requests: {cpu: 100m, memory: 1Gi}
+  limits: {cpu: 1000m, memory: 1Gi}
 
 # The Host header must be one of APPLICATION_HOSTS (localhost is appended there), or
 # Rails host authorization answers 403.
