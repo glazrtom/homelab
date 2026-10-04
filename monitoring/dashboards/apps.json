@@ -160,7 +160,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "probe_success",
+          "expr": "probe_success{probe_group!=\"internet\"}",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -172,7 +172,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg_over_time(probe_success[7d])",
+          "expr": "avg_over_time(probe_success{probe_group!=\"internet\"}[7d])",
           "legendFormat": "",
           "refId": "B",
           "instant": true,
@@ -184,7 +184,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "probe_duration_seconds",
+          "expr": "probe_duration_seconds{probe_group!=\"internet\"}",
           "legendFormat": "",
           "refId": "C",
           "instant": true,

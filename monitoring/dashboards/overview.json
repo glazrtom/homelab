@@ -442,7 +442,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(probe_success) / count(probe_success)",
+          "expr": "sum(probe_success{probe_group!=\"internet\"}) / count(probe_success{probe_group!=\"internet\"})",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1253,7 +1253,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "probe_success == 0",
+          "expr": "probe_success{probe_group!=\"internet\"} == 0",
           "legendFormat": "",
           "refId": "A",
           "instant": true,

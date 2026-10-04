@@ -140,7 +140,7 @@ spec:
           annotations:
             summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) is CPU-throttled more than 25% of the time"
         - alert: ProbeDown
-          expr: probe_success{job!~".*edge.*"} == 0
+          expr: probe_success{job!~".*edge.*", probe_group!="internet"} == 0
           for: 3m
           labels: { severity: critical }
           annotations:

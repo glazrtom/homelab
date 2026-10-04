@@ -320,8 +320,27 @@ prometheus-blackbox-exporter:
   # serviceMonitorSelectorNilUsesHelmValues: false above still pick this up fine -
   # no ServiceMonitor of our own needed, the Probe CRs below carry their own
   # target list and talk to this exporter directly.
+  # Unprivileged ICMP: the container is non-root with all capabilities dropped, so
+  # NET_RAW is moot; this sysctl lets it open datagram ICMP sockets instead.
+  podSecurityContext:
+    sysctls:
+      - name: net.ipv4.ping_group_range
+        value: "0 2147483647"
   config:
     modules:
+      icmp:
+        prober: icmp
+        timeout: 5s
+        icmp:
+          preferred_ip_protocol: "ip4"
+      dns_external:
+        prober: dns
+        timeout: 5s
+        dns:
+          query_name: "cloudflare.com"
+          query_type: "A"
+          transport_protocol: "udp"
+          preferred_ip_protocol: "ip4"
       http_2xx:
         prober: http
         timeout: 5s
@@ -387,6 +406,28 @@ probes:
     url: "https://auth.glazrtom.cz/-/health/live/"
     module: http_2xx
     interval: 2m
+  # Internet reachability, tagged probe_group=internet so service-level alerts and
+  # dashboards can exclude them (an ISP outage isn't a service being down).
+  - name: internet-cloudflare-ping
+    url: "1.1.1.1"
+    module: icmp
+    group: internet
+    interval: 60s
+  - name: internet-google-ping
+    url: "8.8.8.8"
+    module: icmp
+    group: internet
+    interval: 60s
+  - name: internet-https
+    url: "https://1.1.1.1/cdn-cgi/trace"
+    module: http_2xx
+    group: internet
+    interval: 60s
+  - name: internet-dns
+    url: "1.1.1.1:53"
+    module: dns_external
+    group: internet
+    interval: 60s
 
 # smartctl-exporter: disk temperature + SMART health, dell (amd64) only. orangepi's
 # root disk is an eMMC/SD card SBC boot device, not a SATA/NVMe disk SMART reports on

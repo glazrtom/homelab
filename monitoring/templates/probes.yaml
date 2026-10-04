@@ -16,6 +16,10 @@ spec:
   interval: {{ .interval | default $.Values.global.monitoring.interval.slow }}
   targets:
     staticConfig:
+      {{- with .group }}
+      labels:
+        probe_group: {{ . }}
+      {{- end }}
       static:
         - {{ .url }}
 {{- end }}
