@@ -50,6 +50,8 @@ prowlarr:
       VPN_SERVICE_PROVIDER: windscribe
       VPN_TYPE: openvpn
       SERVER_REGIONS: Czech Republic
+      UPDATER_PERIOD: 24h
+      UPDATER_VPN_SERVICE_PROVIDERS: windscribe
       DNS_KEEP_NAMESERVER: "on"
       FIREWALL: "on"
       FIREWALL_OUTBOUND_SUBNETS: 10.42.0.0/15
