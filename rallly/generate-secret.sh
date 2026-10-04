@@ -35,6 +35,11 @@ secret_literal_args
 secret_source rallly rallly
 resolve SECRET_PASSWORD --gen 'rand_alnum 32'
 resolve CRON_SECRET --gen 'rand_alnum 32'
+# The chart reads these two from this Secret (optional keys), so they can't also be
+# extraEnv: a duplicate env name breaks ArgoCD's diff and the API server keeps only
+# the first entry anyway.
+resolve SMTP_PWD --from smtp-credentials
+resolve OIDC_CLIENT_SECRET --from rallly-oidc-client/authentik
 secret_literal_args
 {
   echo "---"

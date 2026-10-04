@@ -48,15 +48,3 @@ rallly:
     secure: false
     user: "glazrtom.homelab@gmail.com"
     rejectUnauthorized: true
-  extraEnv:
-    - name: SMTP_PWD
-      valueFrom:
-        secretKeyRef:
-          name: smtp-credentials
-          key: SMTP_PWD
-    # Reflected from authentik (authentik/generate-secret.sh).
-    - name: OIDC_CLIENT_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: rallly-oidc-client
-          key: OIDC_CLIENT_SECRET
