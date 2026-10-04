@@ -24,10 +24,10 @@ spec:
                 homelab/gpu: intel
             - op: replace
               path: /spec/template/spec/containers/0/resources/requests/memory
-              value: 128Mi
+              value: 32Mi
             - op: replace
               path: /spec/template/spec/containers/0/resources/limits/memory
-              value: 128Mi
+              value: 32Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system

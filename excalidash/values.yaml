@@ -32,13 +32,23 @@ excalidash:
     persistence:
       storageClass: longhorn
       size: 2Gi
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: 1000m, memory: 128Mi}
   # Still mounted at /app/prisma for the backend's persisted secret files.
   persistence:
     storageClass: longhorn
     size: 1Gi
     annotations:
       argocd.argoproj.io/sync-options: Delete=false,Prune=false
+  frontend:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {cpu: 200m, memory: 32Mi}
   backend:
+    resources:
+      requests: {cpu: 50m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 256Mi}
     # OIDC_CLIENT_SECRET, reflected from authentik (authentik/generate-secret.sh).
     extraEnvFrom:
       - secretRef:

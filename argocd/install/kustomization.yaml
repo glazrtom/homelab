@@ -47,10 +47,10 @@ patches:
                 resources:
                   requests:
                     cpu: 20m
-                    memory: 1Gi
+                    memory: 512Mi
                   limits:
                     cpu: "1"
-                    memory: 1Gi
+                    memory: 512Mi
   - target:
       kind: Deployment
       name: argocd-server
@@ -87,10 +87,10 @@ patches:
                 resources:
                   requests:
                     cpu: 10m
-                    memory: 128Mi
+                    memory: 64Mi
                   limits:
                     cpu: 200m
-                    memory: 128Mi
+                    memory: 64Mi
   - target:
       kind: Deployment
       name: argocd-dex-server
@@ -127,10 +127,10 @@ patches:
                 resources:
                   requests:
                     cpu: 5m
-                    memory: 128Mi
+                    memory: 64Mi
                   limits:
                     cpu: 200m
-                    memory: 128Mi
+                    memory: 64Mi
   - target:
       kind: Deployment
       name: argocd-notifications-controller
@@ -147,7 +147,7 @@ patches:
                 resources:
                   requests:
                     cpu: 5m
-                    memory: 128Mi
+                    memory: 64Mi
                   limits:
                     cpu: 100m
-                    memory: 128Mi
+                    memory: 64Mi

@@ -50,19 +50,19 @@ rallly:
     resources:
       requests:
         cpu: 250m
-        memory: 256Mi
+        memory: 128Mi
       limits:
         cpu: "1"
-        memory: 256Mi
+        memory: 128Mi
   garage:
     existingSecret: rallly-garage
     resources:
       requests:
         cpu: 100m
-        memory: 128Mi
+        memory: 64Mi
       limits:
         cpu: "1"
-        memory: 128Mi
+        memory: 64Mi
   smtp:
     host: "smtp.gmail.com"
     port: 587

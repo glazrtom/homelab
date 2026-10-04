@@ -205,8 +205,8 @@ redis:
       size: 512Mi
       mountPath: /data
   resources:
-    requests: {cpu: 20m, memory: 128Mi}
-    limits: {cpu: 200m, memory: 128Mi}
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {cpu: 200m, memory: 64Mi}
   probes:
     readinessProbe:
       exec:

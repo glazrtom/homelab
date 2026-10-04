@@ -60,9 +60,9 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 64Mi
             limits:
-              memory: 128Mi
+              memory: 64Mi
           volumeMounts:
             - name: config
               mountPath: /etc/cloudflared/config/config.yaml
