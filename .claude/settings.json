@@ -162,7 +162,11 @@
       "Bash(ansible-playbook --inventory*)",
       "Bash(ansible *)",
       "Bash(ssh *)",
-      "Bash(*/generate-secret.sh*)"
+      "Bash(./*generate-*secret.sh*)",
+      "Bash(/Users/tom/projects/homelab/*generate-*secret.sh*)",
+      "Bash(bash *generate-*secret.sh*)",
+      "Bash(sh *generate-*secret.sh*)",
+      "Bash(zsh *generate-*secret.sh*)"
     ],
     "deny": [
       "Bash(kubectl delete*)",
