@@ -729,13 +729,278 @@
       }
     },
     {
+      "type": "row",
+      "title": "Capacity (requests & limits)",
+      "collapsed": false,
+      "panels": [],
+      "id": 16,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU requests / limits vs allocatable",
+      "description": "Sum of container CPU requests and limits of running pods, and actual use, as a share of each node's allocatable CPU. Above 100% = overcommitted.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
+          "legendFormat": "{{node}} requests",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (node) (kube_pod_container_resource_limits{resource=\"cpu\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
+          "legendFormat": "{{node}} limits",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (node) (rate(container_cpu_usage_seconds_total{container!=\"\",node=~\"$node\"}[5m])) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
+          "legendFormat": "{{node}} used",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/limits/"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/used/"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory requests / limits vs allocatable",
+      "description": "Sum of container memory requests and limits of running pods, and working-set use, as a share of each node's allocatable memory. Above 100% = overcommitted.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"memory\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
+          "legendFormat": "{{node}} requests",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (node) (kube_pod_container_resource_limits{resource=\"memory\",node=~\"$node\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
+          "legendFormat": "{{node}} limits",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (node) (container_memory_working_set_bytes{container!=\"\",node=~\"$node\"}) / sum by (node) (kube_node_status_allocatable{resource=\"memory\",node=~\"$node\"})",
+          "legendFormat": "{{node}} used",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/limits/"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/used/"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 18,
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    },
+    {
       "id": 13,
       "type": "row",
       "title": "Control plane",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 38,
         "w": 24,
         "h": 1
       },
@@ -797,7 +1062,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 39,
         "w": 12,
         "h": 7
       },
@@ -870,7 +1135,7 @@
       "id": 15,
       "gridPos": {
         "x": 12,
-        "y": 30,
+        "y": 39,
         "w": 12,
         "h": 7
       },
