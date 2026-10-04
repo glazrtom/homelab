@@ -131,6 +131,22 @@ data:
     metadata:
       name: homelab - Access
     entries:
+      # Shared `email` scope for every OIDC provider below. Authentik's managed one
+      # hard-codes email_verified: false (it can't verify addresses), which makes apps
+      # like Rallly refuse to link a login to an existing user. Asserting true is accurate
+      # here: users can't edit their own email and there is no self-enrollment. Re-check
+      # that if either changes. Defined first because !KeyOf only resolves entries
+      # already applied.
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-homelab-email
+        identifiers:
+          name: homelab-email-verified
+        attrs:
+          name: homelab-email-verified
+          scope_name: email
+          expression: |
+            return {"email": request.user.email, "email_verified": True}
+
       # default-authentication-flow is a built-in flow only ever referenced here by
       # slug (never defined), so its User Login stage is matched by the name Authentik
       # ships it under rather than declared fresh - this updates that existing stage in
@@ -431,7 +447,7 @@ data:
               matching_mode: strict
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
-            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !KeyOf scope-homelab-email
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
 
       - model: authentik_core.application
@@ -475,7 +491,7 @@ data:
               matching_mode: strict
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
-            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !KeyOf scope-homelab-email
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
 
       - model: authentik_core.application
@@ -518,7 +534,7 @@ data:
               matching_mode: strict
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
-            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !KeyOf scope-homelab-email
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
 
       - model: authentik_core.application
@@ -563,7 +579,7 @@ data:
               matching_mode: strict
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
-            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !KeyOf scope-homelab-email
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
 
       - model: authentik_core.application
@@ -583,20 +599,6 @@ data:
       {{- end }}
 
       {{- if .Values.ralllyOidc.enabled }}
-      # Authentik's managed email scope hard-codes email_verified: false, and Rallly
-      # (better-auth) won't link an OIDC login to an existing user whose email the
-      # provider calls unverified. Emails here are admin-managed, so assert it for this
-      # provider only.
-      - model: authentik_providers_oauth2.scopemapping
-        id: scope-rallly-email
-        identifiers:
-          name: rallly-email-verified
-        attrs:
-          name: rallly-email-verified
-          scope_name: email
-          expression: |
-            return {"email": request.user.email, "email_verified": True}
-
       # Browser SSO into Rallly, on top of its forward-auth gate. Confidential; public
       # issuer only (Rallly's baseUrl is the public host). Rallly 4.12 (better-auth) sends
       # /api/auth/callback/oidc as redirect_uri and forwards it to its native
@@ -624,7 +626,7 @@ data:
               matching_mode: strict
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
-            - !KeyOf scope-rallly-email
+            - !KeyOf scope-homelab-email
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
 
       - model: authentik_core.application
