@@ -70,8 +70,8 @@ run against a cluster where that namespace/PVC already exists and is live: the P
 immutable once bound, so `kubectl apply` fails cleanly on the last step without touching the live
 PVC or its data — it only succeeds where the target genuinely doesn't exist yet, i.e. a real
 recovery. Confirmed against the live cluster while writing this skill: re-running it against
-`gatus-data-pvc` (already bound) created and restored the Longhorn volume correctly, then errored
-safely on the PVC step, leaving the running gatus pod untouched; the Volume/PV are also
+a since-removed app's data PVC (already bound) created and restored the Longhorn volume correctly,
+then errored safely on the PVC step, leaving the running pod untouched; the Volume/PV are also
 straightforward to `kubectl delete` afterward, which is how that test was cleaned up.
 
 ## What does not come back

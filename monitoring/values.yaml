@@ -259,7 +259,7 @@ kube-prometheus-stack:
 
   prometheus:
     prometheusSpec:
-      # Monitors for third-party targets (longhorn, argocd, gatus, ingress-nginx,
+      # Monitors for third-party targets (longhorn, argocd, ingress-nginx,
       # cloudflared) live in the charts they monitor, not here - see each chart's
       # templates/servicemonitor.yaml or podmonitor.yaml, gated on
       # global.monitoring.serviceMonitors. They can't carry this release's name
@@ -280,7 +280,7 @@ kube-prometheus-stack:
       probeSelectorNilUsesHelmValues: false
       # Tier B default - everything not overridden per-target above inherits this.
       # Object-state targets (kube-state-metrics, Longhorn, ArgoCD, MetalLB,
-      # cloudflared, gatus, self-monitoring) change on the scale of minutes; 15s
+      # cloudflared, self-monitoring) change on the scale of minutes; 15s
       # buys nothing there.
       scrapeInterval: 60s
       priorityClassName: homelab-monitoring
@@ -309,10 +309,7 @@ kube-prometheus-stack:
       # (default true) already matches templates/recording-rules.yaml's
       # release: {{ .Release.Name }} label - no override needed here.
 
-# blackbox-exporter: replaces Gatus's up/down checks (gatus/values.yaml's endpoints
-# list) as Prometheus targets/alerts, since Gatus is going away. Gatus itself is left
-# running untouched until that happens - this doesn't duplicate its email alerts, it
-# just gives the same up/down signal a home in Grafana/Alertmanager too.
+# blackbox-exporter: up/down checks as Prometheus targets/alerts.
 prometheus-blackbox-exporter:
   priorityClassName: homelab-monitoring
   affinity: *workerAffinity
@@ -359,9 +356,7 @@ prometheus-blackbox-exporter:
           transport_protocol: "udp"
           preferred_ip_protocol: "ip4"
 
-# One Probe CR per endpoint, rendered by templates/probes.yaml. url/module mirror
-# gatus/values.yaml's endpoints list; keep the two files in step by hand until Gatus
-# is removed, at which point this becomes the only copy.
+# One Probe CR per endpoint, rendered by templates/probes.yaml.
 probes:
   - name: jellyfin
     url: "http://jellyfin.jellyfin:8096/health"

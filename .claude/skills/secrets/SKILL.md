@@ -8,7 +8,7 @@ description: This skill should be used when creating, rotating, or resealing a s
 **Bitnami Sealed Secrets** is the mechanism (controller in `kube-system`). Encrypted
 secrets are committed to git (`*/templates/sealed-*.yaml`, `base/github-credentials-sealed.yaml`,
 `base/windscribe-sealed.yaml`, `base/smtp-sealed.yaml`). Every `generate-*-secret.sh`
-(`authentik/`, `base/` ×3, `cloudflare/`, `gatus/`, `longhorn/`, `rallly/`) sources
+(`authentik/`, `base/` ×3, `cloudflare/`, `longhorn/`, `rallly/`) sources
 `scripts/secretlib.sh` (which itself sources `scripts/seal.sh`) and declares its keys via
 `resolve KEY [--gen ...] [--prompt ...] [--static ...] [--from secret/ns] [--unsafe-force]
 [--follow-up ...]`. Each key resolves independently, in order: the git-ignored local

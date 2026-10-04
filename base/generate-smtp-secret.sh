@@ -1,6 +1,6 @@
 #! /bin/bash
 # Cluster-wide SMTP credential, reflected by reflector into every namespace that
-# needs to send mail (rallly, gatus). Falls back to the value already live in the
+# needs to send mail (rallly). Falls back to the value already live in the
 # rallly Secret (pre-migration source of truth) before prompting.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -17,7 +17,7 @@ kubectl create secret generic smtp-credentials \
   --from-literal=SMTP_PWD="$SMTP_PWD" \
   --dry-run=client -o yaml \
 | kubectl annotate --local -f - \
-   $(reflector_annotations "rallly,gatus") \
+   $(reflector_annotations "rallly") \
    --output yaml > "$PLAIN"
 
 secret_finish

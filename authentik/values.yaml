@@ -89,10 +89,6 @@ gatedApps:
     name: Sonarr
     prefix: sonarr
     users: [glazrtom]
-  - slug: gatus
-    name: Status
-    prefix: status
-    groups: [homelab-admins]
   - slug: grafana
     name: Grafana
     prefix: grafana

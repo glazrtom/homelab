@@ -2,8 +2,7 @@
 # Two Secrets share one plaintext file, same pattern as rallly/generate-secret.sh:
 # ntfy's own declarative users/tokens (templates/_env.tpl's NTFY_AUTH_USERS/
 # NTFY_AUTH_TOKENS), and Alertmanager's bearer token for the ntfy webhook -
-# reflected into monitoring/ the same way gatus/generate-secret.sh reflects its
-# heartbeat token into longhorn-system.
+# reflected into monitoring/.
 #
 # The `media` user/token (write-only to topic `media`) is for the media apps
 # (radarr, sonarr, ...): they store it in their own settings, so it isn't reflected.

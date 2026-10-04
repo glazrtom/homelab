@@ -242,9 +242,8 @@ spec:
           annotations:
             summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is faulted"
         - alert: LonghornBackupFailed
-          # No "age since last success" gauge exists upstream - Gatus's longhorn-daily
-          # heartbeat (gatus/values.yaml) already covers that as "no report arrived".
-          # This catches a backup that ran and errored, which the heartbeat alone won't.
+          # Catches a backup that ran and errored. No "age since last success" gauge
+          # exists upstream, so a backup that never runs isn't covered.
           expr: longhorn_backup_state == 4  # Longhorn encodes the state as a number: 4 = Error
           labels: { severity: warning }
           annotations:
