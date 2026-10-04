@@ -60,6 +60,11 @@ spec:
                 secretKeyRef:
                   name: rallly-oidc-client
                   key: OIDC_CLIENT_SECRET
+            - name: DAWARICH_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich-oidc-client
+                  key: OIDC_CLIENT_SECRET
           volumeMounts:
             - name: blueprints-cm-authentik-blueprints
               mountPath: /blueprints/mounted/cm-authentik-blueprints
