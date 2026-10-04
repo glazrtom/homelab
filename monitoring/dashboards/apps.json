@@ -105,8 +105,33 @@
         }
       },
       {
+        "name": "order",
+        "label": "Show",
+        "type": "custom",
+        "query": "Top : topk,Bottom : bottomk",
+        "multi": false,
+        "includeAll": false,
+        "options": [
+          {
+            "text": "Top",
+            "value": "topk",
+            "selected": true
+          },
+          {
+            "text": "Bottom",
+            "value": "bottomk",
+            "selected": false
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "Top",
+          "value": "topk"
+        }
+      },
+      {
         "name": "topn",
-        "label": "Show top",
+        "label": "Count",
         "type": "custom",
         "query": "5,10,20",
         "multi": false,
@@ -464,7 +489,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk($topn, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})))",
+          "expr": "$order($topn, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})))",
           "legendFormat": "{{namespace}}/{{pod}}",
           "refId": "A"
         }
@@ -533,7 +558,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk($topn, max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\"}))",
+          "expr": "$order($topn, max by (namespace, pod, container) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}) / on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\"}))",
           "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
           "refId": "A"
         }
@@ -611,7 +636,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk($topn, sum by (namespace, pod) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}))",
+          "expr": "$order($topn, sum by (namespace, pod) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}))",
           "legendFormat": "{{namespace}}/{{pod}}",
           "refId": "A"
         }
@@ -760,7 +785,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk($topn, sum by (host) (rate(nginx_ingress_controller_requests[5m])))",
+          "expr": "$order($topn, sum by (host) (rate(nginx_ingress_controller_requests[5m])))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -907,7 +932,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk($topn, histogram_quantile(0.95, sum by (le, ingress) (rate(nginx_ingress_controller_request_duration_seconds_bucket[5m]))))",
+          "expr": "$order($topn, histogram_quantile(0.95, sum by (le, ingress) (rate(nginx_ingress_controller_request_duration_seconds_bucket[5m]))))",
           "legendFormat": "{{ingress}}",
           "refId": "A"
         }
