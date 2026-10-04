@@ -1,0 +1,19 @@
+{{- if .Values.global.monitoring.serviceMonitors }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "lib.fullname" . }}
+  namespace: {{ include "lib.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  selector:
+    matchLabels:
+      {{- include "lib.selectorLabels" . | nindent 6 }}
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.global.monitoring.interval.slow }}
+    - port: metrics-exp
+      interval: {{ .Values.global.monitoring.interval.slow }}
+{{- end }}
