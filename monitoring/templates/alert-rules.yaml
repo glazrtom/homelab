@@ -242,12 +242,40 @@ spec:
           annotations:
             summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is faulted"
         - alert: LonghornBackupFailed
-          # Catches a backup that ran and errored. No "age since last success" gauge
-          # exists upstream, so a backup that never runs isn't covered.
+          # Catches a backup that ran and errored; LonghornBackupMissing covers one
+          # that never ran.
           expr: longhorn_backup_state == 4  # Longhorn encodes the state as a number: 4 = Error
           labels: { severity: warning }
           annotations:
             summary: "Longhorn backup {{ "{{" }} $labels.backup {{ "}}" }} of volume {{ "{{" }} $labels.volume {{ "}}" }} failed"
+        - alert: LonghornBackupMissing
+          # Expected set: attached `longhorn`-class volumes whose PVC is older than 26h
+          # (a detached volume is legitimately skipped; a new one hasn't had its first
+          # run yet). Each backup is its own series (label `backup`), so one that didn't
+          # exist 26h ago is a new daily backup. Starting from PVCs rather than backup
+          # series also catches a volume that has never been backed up.
+          expr: |
+            label_replace(
+              kube_persistentvolumeclaim_info{storageclass="longhorn"}
+                and on (namespace, persistentvolumeclaim) (time() - kube_persistentvolumeclaim_created > 93600),
+              "volume", "$1", "volumename", "(.+)")
+              and on (volume) (longhorn_volume_state{state="attached"} == 1)
+            unless on (volume)
+            count by (volume) (
+              longhorn_backup_state{recurring_job="backup-daily"}
+                unless on (backup) longhorn_backup_state{recurring_job="backup-daily"} offset 26h
+            )
+          for: 1h
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} has had no new daily Longhorn backup in over 26h"
+        - alert: LonghornMetricsMissing
+          # The two backup alerts above go silent, not red, if Longhorn's metrics vanish.
+          expr: absent(up{job="longhorn-backend"} == 1)
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Longhorn metrics are not being scraped - backup alerts are blind"
         - alert: SmartDiskFailing
           expr: smartctl_device_smart_status == 0
           labels: { severity: critical }
