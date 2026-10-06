@@ -433,7 +433,7 @@ probes:
 smartctlExporter:
   image:
     repository: prometheuscommunity/smartctl-exporter
-    tag: "v0.14.0"
+    tag: "v0.15.0"
   port: 9633
   resources:
     requests: { cpu: 10m, memory: 32Mi }
