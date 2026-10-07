@@ -2,7 +2,7 @@ namespace: ntfy
 
 image:
   repository: binwiederhier/ntfy
-  tag: "v2.28.0"
+  tag: "v2.29.0"
   pullPolicy: IfNotPresent
 
 args: ["serve"]
