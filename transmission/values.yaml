@@ -24,6 +24,10 @@ extraEnv:
     value: "flood-for-transmission"
   - name: LOCAL_NETWORK
     value: "10.42.0.0/15"
+  - name: OVERRIDE_DNS_1
+    value: "1.1.1.1"
+  - name: OVERRIDE_DNS_2
+    value: "1.0.0.1"
 
 initPerms:
   image:
@@ -59,9 +63,9 @@ securityContext:
 resources:
   requests:
     cpu: 200m
-    memory: 64Mi
+    memory: 128Mi
   limits:
-    memory: 64Mi
+    memory: 128Mi
 
 volumes:
   config:
