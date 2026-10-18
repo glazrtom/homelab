@@ -648,15 +648,15 @@
     {
       "type": "bargauge",
       "title": "Volume filesystem used",
-      "description": "How full the filesystem inside each volume is, as seen by the pod using it. Above 85% needs a resize.",
+      "description": "How full the filesystem inside each Longhorn volume is, as seen by the pod using it. One bar per volume, even when several PVCs share it. Above 85% needs a resize.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sort_desc(kubelet_volume_stats_used_bytes{persistentvolumeclaim=~\"$pvc\"} / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim=~\"$pvc\"})",
-          "legendFormat": "{{namespace}}/{{persistentvolumeclaim}}",
+          "expr": "sort_desc((max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes)) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\")))",
+          "legendFormat": "{{persistentvolumeclaim}}",
           "refId": "A",
           "instant": true,
           "range": false
@@ -806,13 +806,228 @@
       }
     },
     {
+      "id": 19,
+      "type": "row",
+      "title": "Volume details",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "table",
+      "title": "Volume size vs usage",
+      "description": "Each Longhorn volume's size next to what its filesystem actually holds, as last / max over the selected time range. Headroom = size minus max used: how much smaller the volume could be. On disk is what Longhorn has written for it, snapshots included. Longhorn cannot shrink a volume in place, so shrinking means a new smaller PVC and a copy.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes)) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes)) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))",
+          "legendFormat": "",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (namespace, persistentvolumeclaim) (max_over_time(kubelet_volume_stats_used_bytes[$__range]) / kubelet_volume_stats_capacity_bytes)) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))",
+          "legendFormat": "",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes)) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))",
+          "legendFormat": "",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max by (namespace, persistentvolumeclaim) (max_over_time(kubelet_volume_stats_used_bytes[$__range]))) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))",
+          "legendFormat": "",
+          "refId": "E",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes)) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))) - on (namespace, persistentvolumeclaim) ((max by (namespace, persistentvolumeclaim) (max_over_time(kubelet_volume_stats_used_bytes[$__range]))) and on (namespace, persistentvolumeclaim) max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_capacity_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\")))",
+          "legendFormat": "",
+          "refId": "F",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (namespace, persistentvolumeclaim) (label_replace(label_replace(longhorn_volume_actual_size_bytes{pvc=~\"$pvc\"}, \"namespace\", \"$1\", \"pvc_namespace\", \"(.*)\"), \"persistentvolumeclaim\", \"$1\", \"pvc\", \"(.*)\"))",
+          "legendFormat": "",
+          "refId": "G",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "namespace": 0,
+              "persistentvolumeclaim": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6,
+              "Value #F": 7,
+              "Value #G": 8
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "persistentvolumeclaim": "PVC",
+              "Value #A": "Size",
+              "Value #B": "Used %",
+              "Value #C": "Max %",
+              "Value #D": "Used",
+              "Value #E": "Max used",
+              "Value #F": "Headroom",
+              "Value #G": "On disk"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "value": null,
+                      "color": "green"
+                    },
+                    {
+                      "value": 0.8,
+                      "color": "orange"
+                    },
+                    {
+                      "value": 0.9,
+                      "color": "red"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Max %",
+            "desc": true
+          }
+        ],
+        "frozenColumns": {
+          "left": 2
+        }
+      }
+    },
+    {
       "id": 13,
       "type": "row",
       "title": "Physical disks",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 32,
         "w": 24,
         "h": 1
       },
@@ -887,7 +1102,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 33,
         "w": 8,
         "h": 7
       },
@@ -946,7 +1161,7 @@
               }
             }
           ],
-          "noValue": "No data (exporter not scraped yet)"
+          "noValue": "No data - exporter is up but smartctl reads fail, check its logs"
         },
         "overrides": []
       },
@@ -967,7 +1182,7 @@
       "id": 15,
       "gridPos": {
         "x": 8,
-        "y": 22,
+        "y": 33,
         "w": 8,
         "h": 7
       },
@@ -1011,7 +1226,7 @@
               }
             ]
           },
-          "noValue": "No data (exporter not scraped yet)",
+          "noValue": "No data - exporter is up but smartctl reads fail, check its logs",
           "custom": {
             "lineWidth": 1,
             "fillOpacity": 10,
@@ -1044,7 +1259,7 @@
       "id": 16,
       "gridPos": {
         "x": 16,
-        "y": 22,
+        "y": 33,
         "w": 8,
         "h": 7
       },
@@ -1134,7 +1349,7 @@
       "id": 17,
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 40,
         "w": 12,
         "h": 7
       },
@@ -1220,7 +1435,7 @@
       "id": 18,
       "gridPos": {
         "x": 12,
-        "y": 29,
+        "y": 40,
         "w": 12,
         "h": 7
       },
