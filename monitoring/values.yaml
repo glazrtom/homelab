@@ -338,23 +338,31 @@ prometheus-blackbox-exporter:
           query_type: "A"
           transport_protocol: "udp"
           preferred_ip_protocol: "ip4"
+      # In-cluster modules: 9s (under Prometheus's 10s scrape timeout) so one lost
+      # UDP DNS packet - the resolver retries after 5s - doesn't mark a service DOWN,
+      # and A-only lookups (no AAAA fallback) halve the DNS packets per probe.
       http_2xx:
         prober: http
-        timeout: 5s
+        timeout: 9s
         http:
           valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
           preferred_ip_protocol: "ip4"
+          ip_protocol_fallback: false
       tcp_connect:
         prober: tcp
-        timeout: 5s
+        timeout: 9s
+        tcp:
+          preferred_ip_protocol: "ip4"
+          ip_protocol_fallback: false
       dns_udp:
         prober: dns
-        timeout: 5s
+        timeout: 9s
         dns:
           query_name: "pi.hole"
           query_type: "A"
           transport_protocol: "udp"
           preferred_ip_protocol: "ip4"
+          ip_protocol_fallback: false
 
 # One Probe CR per endpoint, rendered by templates/probes.yaml.
 probes:
@@ -437,4 +445,4 @@ smartctlExporter:
   port: 9633
   resources:
     requests: { cpu: 10m, memory: 32Mi }
-    limits: { cpu: 50m, memory: 32Mi }
+    limits: { memory: 32Mi }

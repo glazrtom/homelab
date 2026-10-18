@@ -86,4 +86,4 @@ piholeExporter:
   port: 9617
   resources:
     requests: { cpu: 10m, memory: 32Mi }
-    limits: { cpu: 50m, memory: 32Mi }
+    limits: { memory: 32Mi }

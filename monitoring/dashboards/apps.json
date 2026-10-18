@@ -133,7 +133,7 @@
         "name": "topn",
         "label": "Count",
         "type": "custom",
-        "query": "5,10,20",
+        "query": "5,10,20,All : 10000",
         "multi": false,
         "includeAll": false,
         "options": [
@@ -150,6 +150,11 @@
           {
             "text": "20",
             "value": "20",
+            "selected": false
+          },
+          {
+            "text": "All",
+            "value": "10000",
             "selected": false
           }
         ],
@@ -185,7 +190,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "probe_success{probe_group!=\"internet\"}",
+          "expr": "max by (instance) (probe_success{probe_group!=\"internet\"})",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -197,7 +202,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg_over_time(probe_success{probe_group!=\"internet\"}[7d])",
+          "expr": "max by (instance) (avg_over_time(probe_success{probe_group!=\"internet\"}[7d]))",
           "legendFormat": "",
           "refId": "B",
           "instant": true,
@@ -209,7 +214,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "probe_duration_seconds{probe_group!=\"internet\"}",
+          "expr": "max by (instance) (probe_duration_seconds{probe_group!=\"internet\"})",
           "legendFormat": "",
           "refId": "C",
           "instant": true,
@@ -481,22 +486,22 @@
     },
     {
       "type": "timeseries",
-      "title": "CPU use (% of node)",
-      "description": "Each pod's CPU use as a share of the selected nodes' total CPU. 100% = every core of the node(s).",
+      "title": "CPU use (cores)",
+      "description": "Each pod's CPU use in cores (1 = one full core). Averaged over the dashboard's rate interval, so zoom in to see short spikes.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "$order($topn, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})))",
+          "expr": "$order($topn, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[$__rate_interval])))",
           "legendFormat": "{{namespace}}/{{pod}}",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
+          "unit": "none",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -514,8 +519,10 @@
             "spanNulls": true,
             "thresholdsStyle": {
               "mode": "off"
-            }
-          }
+            },
+            "axisLabel": "cores"
+          },
+          "decimals": 3
         },
         "overrides": []
       },
@@ -698,14 +705,14 @@
     {
       "type": "bargauge",
       "title": "CPU throttling (worst offenders)",
-      "description": "Share of CPU time each container was held back by its CPU limit, averaged over the selected time range. Only containers above 25% are listed; empty means nothing is throttled.",
+      "description": "Share of wall-clock time each container spent stalled by its CPU limit, averaged over the selected time range. Only containers above 1% are listed; empty means nothing is meaningfully throttled.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk($topn, avg_over_time((sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])) / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[5m])))[$__range:5m]) > 0.25)",
+          "expr": "topk($topn, sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_seconds_total{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[$__range])) > 0.01)",
           "legendFormat": "{{namespace}}/{{pod}}/{{container}}",
           "refId": "A",
           "instant": true,
@@ -723,13 +730,13 @@
                 "color": "orange"
               },
               {
-                "value": 0.6,
+                "value": 0.1,
                 "color": "red"
               }
             ]
           },
           "min": 0,
-          "max": 1,
+          "max": 0.25,
           "noValue": "Nothing throttled"
         },
         "overrides": []
@@ -854,7 +861,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (host) (rate(nginx_ingress_controller_requests{status=~\"5..\"}[5m])) / sum by (host) (rate(nginx_ingress_controller_requests[5m]))",
+          "expr": "(sum by (host) (rate(nginx_ingress_controller_requests{status=~\"5..\"}[5m])) > 0) / sum by (host) (rate(nginx_ingress_controller_requests[5m]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -1201,7 +1208,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sonarr_queue_total or radarr_queue_total",
+          "expr": "sum by (job) (sonarr_queue_total or radarr_queue_total) or 0 * max by (job) (sonarr_system_status or radarr_system_status)",
           "legendFormat": "{{job}}",
           "refId": "A",
           "instant": true,
@@ -1219,8 +1226,7 @@
                 "color": "green"
               }
             ]
-          },
-          "noValue": "No data (not scraped yet)"
+          }
         },
         "overrides": []
       },
