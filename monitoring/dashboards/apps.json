@@ -145,7 +145,7 @@
           {
             "text": "10",
             "value": "10",
-            "selected": true
+            "selected": false
           },
           {
             "text": "20",
@@ -155,13 +155,13 @@
           {
             "text": "All",
             "value": "10000",
-            "selected": false
+            "selected": true
           }
         ],
         "current": {
           "selected": true,
-          "text": "10",
-          "value": "10"
+          "text": "All",
+          "value": "10000"
         }
       }
     ]
