@@ -140,6 +140,10 @@
               {
                 "value": null,
                 "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
               }
             ]
           },
@@ -150,10 +154,11 @@
         "overrides": []
       },
       "options": {
-        "showValue": "never",
+        "showValue": "auto",
         "mergeValues": true,
         "alignValue": "left",
         "legend": {
+          "showLegend": false,
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -415,7 +420,7 @@
       "id": 6,
       "gridPos": {
         "x": 12,
-        "y": 1,
+        "y": 5,
         "w": 12,
         "h": 4
       },
@@ -439,15 +444,15 @@
     },
     {
       "type": "bargauge",
-      "title": "Workload availability",
-      "description": "Share of desired replicas that are available, for deployments, statefulsets and daemonsets. Anything below 100% is not fully up; lowest first.",
+      "title": "Workloads not fully available",
+      "description": "Deployments, statefulsets and daemonsets with fewer available replicas than desired, as a share of desired. Empty means everything is fully up.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sort(label_replace(sum by (namespace, deployment) (kube_deployment_status_replicas_available{namespace=~\"$namespace\"}) / sum by (namespace, deployment) (kube_deployment_spec_replicas{namespace=~\"$namespace\"} > 0), \"workload\", \"$1\", \"deployment\", \"(.*)\") or label_replace(sum by (namespace, statefulset) (kube_statefulset_status_replicas_available{namespace=~\"$namespace\"}) / sum by (namespace, statefulset) (kube_statefulset_replicas{namespace=~\"$namespace\"} > 0), \"workload\", \"$1\", \"statefulset\", \"(.*)\") or label_replace(sum by (namespace, daemonset) (kube_daemonset_status_number_available{namespace=~\"$namespace\"}) / sum by (namespace, daemonset) (kube_daemonset_status_desired_number_scheduled{namespace=~\"$namespace\"} > 0), \"workload\", \"$1\", \"daemonset\", \"(.*)\"))",
+          "expr": "sort(label_replace(sum by (namespace, deployment) (kube_deployment_status_replicas_available{namespace=~\"$namespace\"}) / sum by (namespace, deployment) (kube_deployment_spec_replicas{namespace=~\"$namespace\"} > 0), \"workload\", \"$1\", \"deployment\", \"(.*)\") or label_replace(sum by (namespace, statefulset) (kube_statefulset_status_replicas_available{namespace=~\"$namespace\"}) / sum by (namespace, statefulset) (kube_statefulset_replicas{namespace=~\"$namespace\"} > 0), \"workload\", \"$1\", \"statefulset\", \"(.*)\") or label_replace(sum by (namespace, daemonset) (kube_daemonset_status_number_available{namespace=~\"$namespace\"}) / sum by (namespace, daemonset) (kube_daemonset_status_desired_number_scheduled{namespace=~\"$namespace\"} > 0), \"workload\", \"$1\", \"daemonset\", \"(.*)\") < 1)",
           "legendFormat": "{{namespace}}/{{workload}}",
           "refId": "A",
           "instant": true,
@@ -475,12 +480,13 @@
             ]
           },
           "min": 0,
-          "max": 1
+          "max": 1,
+          "noValue": "All workloads fully available"
         },
         "overrides": []
       },
       "options": {
-        "displayMode": "gradient",
+        "displayMode": "basic",
         "orientation": "horizontal",
         "valueMode": "color",
         "showUnfilled": true,
@@ -508,61 +514,62 @@
       }
     },
     {
-      "type": "timeseries",
-      "title": "Container restarts (last hour)",
-      "description": "Containers that restarted, counted over a sliding hour. Repeated restarts mean a crash loop or OOM kills.",
+      "type": "bargauge",
+      "title": "Container restarts (in time range)",
+      "description": "Containers restarted per pod during the selected time range (top 10). Repeated restarts mean a crash loop or OOM kills.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\"}[1h])) > 0)",
+          "expr": "topk(10, sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\"}[$__range])) > 0)",
           "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "noValue": "No restarts",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "value": null,
                 "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "orange"
+              },
+              {
+                "value": 5,
+                "color": "red"
               }
             ]
-          },
-          "min": 0,
-          "noValue": "No restarts",
-          "custom": {
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": true,
-            "thresholdsStyle": {
-              "mode": "off"
-            }
           }
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "minVizHeight": 12,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "reduceOptions": {
           "calcs": [
-            "mean",
-            "max",
             "lastNotNull"
           ],
-          "sortBy": "Max",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+          "fields": "",
+          "values": false
         }
       },
       "id": 9,
@@ -592,22 +599,31 @@
     },
     {
       "type": "timeseries",
-      "title": "CPU use (% of node)",
-      "description": "Each namespace's CPU use as a share of the selected nodes' total CPU. 100% = every core of the node(s).",
+      "title": "CPU use (cores)",
+      "description": "CPU cores used per namespace. 'non-pod' is everything outside pods: k3s itself (apiserver, kubelet, containerd) and the OS.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",node=~\"$node\"}[5m])) / scalar(sum(kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"}))",
+          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\",node=~\"$node\"}[5m]))",
           "legendFormat": "{{namespace}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(container_cpu_usage_seconds_total{id=\"/\",node=~\"$node\"}[5m])) - sum(rate(container_cpu_usage_seconds_total{container!=\"\",node=~\"$node\"}[5m]))",
+          "legendFormat": "non-pod (k3s / OS)",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
+          "unit": "none",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -626,7 +642,8 @@
             "thresholdsStyle": {
               "mode": "off"
             }
-          }
+          },
+          "decimals": 2
         },
         "overrides": []
       },
@@ -744,7 +761,7 @@
     {
       "type": "timeseries",
       "title": "CPU requests / limits vs allocatable",
-      "description": "Sum of container CPU requests and limits of running pods, and actual use, as a share of each node's allocatable CPU. Above 100% = overcommitted.",
+      "description": "Sum of container CPU requests and limits of running pods, as a share of each node's allocatable CPU. Above 100% = overcommitted. 'pods used' is pod CPU only; 'node total' is whole-node CPU from node_exporter, the gap being k3s and the OS.",
       "targets": [
         {
           "datasource": {
@@ -770,8 +787,17 @@
             "uid": "prometheus"
           },
           "expr": "sum by (node) (rate(container_cpu_usage_seconds_total{container!=\"\",node=~\"$node\"}[5m])) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\",node=~\"$node\"})",
-          "legendFormat": "{{node}} used",
+          "legendFormat": "{{node}} pods used",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(sum by (instance) (1 - rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) / count by (instance) (node_cpu_seconds_total{mode=\"idle\"}), \"node\", \"$1\", \"instance\", \"(.*)\") and on (node) kube_node_info{node=~\"$node\"}",
+          "legendFormat": "{{node}} node total",
+          "refId": "D"
         }
       ],
       "fieldConfig": {
@@ -827,12 +853,38 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "/used/"
+              "options": "/pods used/"
             },
             "properties": [
               {
                 "id": "custom.lineWidth",
                 "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/node total/"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    2,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
               }
             ]
           }
