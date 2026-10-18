@@ -787,7 +787,7 @@
       "id": 19,
       "type": "table",
       "title": "Memory use vs limit",
-      "description": "Absolute counterpart of \"Memory use (% of limit)\": each container's working-set memory in bytes next to its limit, as mean / max / last over the selected time range.",
+      "description": "Absolute counterpart of \"Memory use (% of limit)\": each container's working-set memory in bytes next to its limit, as mean / max / last over the selected time range. Headroom = limit minus max: how much the memory request/limit could drop.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -882,6 +882,18 @@
           "instant": true,
           "range": false,
           "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\"}) - on (namespace, pod, container) (max by (namespace, pod, container) (max_over_time(container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\",pod=~\"$pod\",node=~\"$node\"}[$__range])) and on (namespace, pod, container) max by (namespace, pod, container) (kube_pod_container_resource_limits{resource=\"memory\"}))",
+          "legendFormat": "",
+          "refId": "H",
+          "instant": true,
+          "range": false,
+          "format": "table"
         }
       ],
       "transformations": [
@@ -905,7 +917,8 @@
               "Value #G": 6,
               "Value #B": 7,
               "Value #C": 8,
-              "Value #D": 9
+              "Value #D": 9,
+              "Value #H": 10
             },
             "renameByName": {
               "Value #A": "Limit",
@@ -917,7 +930,8 @@
               "Value #G": "Last %",
               "namespace": "Namespace",
               "pod": "Pod",
-              "container": "Container"
+              "container": "Container",
+              "Value #H": "Headroom"
             }
           }
         }
