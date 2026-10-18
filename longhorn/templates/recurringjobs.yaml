@@ -27,6 +27,22 @@ spec:
     - protected
   retain: 3
   concurrency: 1
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: trim-weekly
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  cron: "0 5 * * 1"
+  task: filesystem-trim
+  groups:
+    - default
+    - protected
+  retain: 0
+  concurrency: 1
 {{- if .Values.backup.enabled }}
 ---
 apiVersion: longhorn.io/v1beta2

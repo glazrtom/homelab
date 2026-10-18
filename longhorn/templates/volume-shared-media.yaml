@@ -14,3 +14,6 @@ spec:
   # build this volume's replica on that same node and drop the one left behind,
   # instead of requiring a manual replica move.
   dataLocality: best-effort
+  # Lets a filesystem trim also purge removed snapshots chained to the head, which
+  # Longhorn's replica rebuilds leave behind holding long-deleted data.
+  unmapMarkSnapChainRemoved: enabled

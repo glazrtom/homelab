@@ -31,6 +31,8 @@ spec:
           image: "{{ .Values.smartctlExporter.image.repository }}:{{ .Values.smartctlExporter.image.tag }}"
           securityContext:
             privileged: true
+            runAsUser: 0
+            runAsGroup: 0
           ports:
             - name: metrics
               containerPort: {{ .Values.smartctlExporter.port }}
