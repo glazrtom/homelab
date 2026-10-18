@@ -737,7 +737,8 @@
           },
           "min": 0,
           "max": 0.25,
-          "noValue": "Nothing throttled"
+          "noValue": "Nothing throttled",
+          "displayName": "${__field.labels.namespace}/${__field.labels.pod}/${__field.labels.container}"
         },
         "overrides": []
       },
@@ -748,7 +749,7 @@
         "showUnfilled": true,
         "minVizHeight": 12,
         "minVizWidth": 8,
-        "namePlacement": "left",
+        "namePlacement": "top",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
