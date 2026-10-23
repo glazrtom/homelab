@@ -287,12 +287,14 @@ kube-prometheus-stack:
       resources:
         requests: { cpu: 200m, memory: 768Mi }
         limits: { cpu: 500m, memory: 768Mi }
-      # Time bound is generous on purpose - it isn't the disk guard.
-      # retentionSize is: it caps growth before the 10Gi PVC below fills, even if
-      # the active-series estimate the scrape/relabel config above is tuned
-      # against turns out low.
+      # retention is the target; retentionSize is the disk guard that caps growth
+      # before the 20Gi PVC below fills. ~0.45GB/day at ~93k series needs ~13GiB
+      # for 31d. If series grow, retentionSize starts deleting early and
+      # PrometheusRetentionShortened fires. The existing PVC doesn't follow
+      # the storage value below; it has to be patched by hand (see the
+      # longhorn-config skill).
       retention: 31d
-      retentionSize: 8GiB
+      retentionSize: 16GiB
       storageSpec:
         volumeClaimTemplate:
           spec:
@@ -300,7 +302,7 @@ kube-prometheus-stack:
             accessModes: ["ReadWriteOnce"]
             resources:
               requests:
-                storage: 10Gi
+                storage: 20Gi
       # ~40-60 5m-resolution series (node CPU/mem/thermal, per-namespace container
       # CPU/RSS, Longhorn volume size, ingress RPS/5xx per host, ArgoCD synced
       # count) so a full-window Grafana panel reads recorded points instead of

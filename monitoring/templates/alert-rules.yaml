@@ -296,9 +296,14 @@ spec:
           labels: { severity: warning }
           annotations:
             summary: "Scrape target {{ "{{" }} $labels.job {{ "}}" }}/{{ "{{" }} $labels.instance {{ "}}" }} has been down for 15m"
-        - alert: PrometheusTSDBNearRetentionSize
-          expr: prometheus_tsdb_storage_blocks_bytes / (8 * 1024 * 1024 * 1024) > 0.9
-          for: 30m
+        # The size-retention check keeps it quiet after a fresh install, when history
+        # is short only because Prometheus hasn't been running long yet.
+        - alert: PrometheusRetentionShortened
+          expr: |
+            (time() - prometheus_tsdb_lowest_timestamp_seconds)
+              < 0.9 * prometheus_tsdb_retention_limit_seconds
+            and increase(prometheus_tsdb_size_retentions_total[7d]) > 0
+          for: 1h
           labels: { severity: warning }
           annotations:
-            summary: "Prometheus's TSDB is above 90% of its 8GiB retentionSize cap"
+            summary: "Prometheus is keeping only {{ "{{" }} $value | humanizeDuration {{ "}}" }} of history - retentionSize is deleting data before the time-based retention"
