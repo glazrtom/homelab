@@ -52,7 +52,7 @@ sidecarsTemplate: jellyfin.exporterContainer
 exporter:
   image:
     repository: rebelcore/jellyfin-exporter
-    tag: v1.5.2
+    tag: v1.6.0
   port: 9594
   secret:
     name: jellyfin-exporter
