@@ -13,7 +13,7 @@ app:
 
 image:
   repository: docker.io/freikin/dawarich
-  tag: "1.15.3"
+  tag: "1.19.0"
   pullPolicy: IfNotPresent
 
 command: [web-entrypoint.sh]
@@ -122,7 +122,7 @@ sidekiq:
     name: dawarich-sidekiq
   image:
     repository: docker.io/freikin/dawarich
-    tag: "1.15.3"
+    tag: "1.19.0"
     pullPolicy: IfNotPresent
   command: [sidekiq-entrypoint.sh]
   extraEnvTemplate: dawarich.env
