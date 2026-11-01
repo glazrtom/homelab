@@ -20,7 +20,7 @@ app:
 
 image:
   repository: pihole/pihole
-  tag: "2026.09.0"
+  tag: "2026.10.1"
   pullPolicy: IfNotPresent
 
 service:
@@ -82,7 +82,7 @@ sidecarsTemplate: pihole.exporterContainer
 piholeExporter:
   image:
     repository: ekofr/pihole-exporter
-    tag: "v1.2.0"
+    tag: "v1.3.1"
   port: 9617
   resources:
     requests: { cpu: 10m, memory: 32Mi }
