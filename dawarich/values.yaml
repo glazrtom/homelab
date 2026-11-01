@@ -169,8 +169,8 @@ postgis:
       size: 5Gi
       mountPath: /var/lib/postgresql/data
   resources:
-    requests: {cpu: 50m, memory: 512Mi}
-    limits: {cpu: 500m, memory: 512Mi}
+    requests: {cpu: 50m, memory: 768Mi}
+    limits: {cpu: 500m, memory: 768Mi}
   probes:
     readinessProbe:
       exec:
