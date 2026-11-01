@@ -128,7 +128,12 @@ spec:
           annotations:
             summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) is above 90% of its memory limit"
         - alert: ContainerOOMKilled
-          expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          # last_terminated_reason stays 1 until the container dies again; requiring a
+          # recent restart makes the alert clear instead of firing for the pod's lifetime.
+          expr: |
+            kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+            and on (namespace, pod, container)
+            increase(kube_pod_container_status_restarts_total[15m]) > 0
           labels: { severity: warning }
           annotations:
             summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} ({{ "{{" }} $labels.container {{ "}}" }}) was OOMKilled"
@@ -211,7 +216,9 @@ spec:
           annotations:
             summary: "Traffic to Authentik is over 3x its usual level"
         - alert: AuthentikOutpostDisconnected
-          expr: authentik_outposts_connected == 0
+          # max by outpost: authentik-server keeps a stale 0 series for every replaced
+          # outpost pod uid, so only alert when no instance of the outpost is connected.
+          expr: max by (outpost) (authentik_outposts_connected) == 0
           for: 5m
           labels: { severity: critical }
           annotations:
@@ -311,7 +318,8 @@ spec:
           annotations:
             summary: "Disk {{ "{{" }} $labels.device {{ "}}" }} on {{ "{{" }} $labels.instance {{ "}}" }} is failing its own SMART health check"
         - alert: SmartDiskTemperatureHigh
-          expr: smartctl_device_temperature > 55
+          # temperature_type also carries the drive's static op/critical limits (83/85).
+          expr: smartctl_device_temperature{temperature_type="current"} > 55
           for: 10m
           labels: { severity: warning }
           annotations:

@@ -8,6 +8,10 @@ Gated hosts override this per Ingress via ingress.auth: true (lib.ingress), and 
 that must not be gated opt out with ingress.auth: false.
 */}}
 {{- define "ingress.externalConfig" -}}
+# "auto" = one worker per CPU (14 on dell); a reload briefly doubles them and blew the
+# 384Mi limit.
+worker-processes: "4"
+
 # Trust forwarded headers
 use-forwarded-headers: "true"
 
@@ -42,6 +46,7 @@ header trust (there's no reverse proxy in front of it) and no rate limiting (not
 threat model), just the deny-by-default global auth against the internal outpost.
 */}}
 {{- define "ingress.internalConfig" -}}
+worker-processes: "4"
 global-auth-snippet: |
   proxy_set_header X-Forwarded-Host $http_host;
 global-auth-url: "http://{{ .Values.global.authentik.outposts.internal.service }}.{{ .Values.global.authentik.namespace }}.svc.cluster.local:{{ .Values.global.authentik.outposts.internal.port }}/outpost.goauthentik.io/auth/nginx"
