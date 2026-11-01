@@ -93,10 +93,18 @@ spec:
           annotations:
             summary: "Deployment {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.deployment {{ "}}" }} has fewer replicas available than desired"
         - alert: KubeJobFailed
-          expr: kube_job_status_failed > 0
+          # CronJob-owned Jobs are left to KubeCronJobLastRunFailed: a failed Job lingers
+          # (failedJobsHistoryLimit) long after a later run has succeeded.
+          expr: kube_job_status_failed > 0 unless on (namespace, job_name) kube_job_owner{owner_kind="CronJob"}
           labels: { severity: warning }
           annotations:
             summary: "Job {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.job_name {{ "}}" }} failed"
+        - alert: KubeCronJobLastRunFailed
+          expr: kube_cronjob_status_last_schedule_time > kube_cronjob_status_last_successful_time
+          for: 2h
+          labels: { severity: warning }
+          annotations:
+            summary: "CronJob {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.cronjob {{ "}}" }}'s latest run has not succeeded"
         - alert: KubePersistentVolumeClaimPending
           expr: kube_persistentvolumeclaim_status_phase{phase="Pending"} == 1
           for: 10m
@@ -242,9 +250,10 @@ spec:
           annotations:
             summary: "Longhorn volume {{ "{{" }} $labels.volume {{ "}}" }} is faulted"
         - alert: LonghornBackupFailed
-          # Catches a backup that ran and errored; LonghornBackupMissing covers one
-          # that never ran.
-          expr: longhorn_backup_state == 4  # Longhorn encodes the state as a number: 4 = Error
+          # Heads-up for a backup that just errored; it resolves after 6h because the
+          # Error CR lingers even once a later pass succeeds. LonghornBackupMissing is
+          # the persistent signal that a volume has no fresh backup.
+          expr: longhorn_backup_state == 4 unless on (backup) (longhorn_backup_state offset 6h)  # Longhorn encodes the state as a number: 4 = Error
           labels: { severity: warning }
           annotations:
             summary: "Longhorn backup {{ "{{" }} $labels.backup {{ "}}" }} of volume {{ "{{" }} $labels.volume {{ "}}" }} failed"
@@ -269,6 +278,26 @@ spec:
           labels: { severity: warning }
           annotations:
             summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} has had no new daily Longhorn backup in over 26h"
+        - alert: LonghornBackupRetentionShort
+          # Longhorn restarts the whole backup-daily job on any failure, so retried
+          # nights use several `retain` slots at once. Each backup is its own series, so
+          # a volume with no current Completed backup that already existed 4d ago has
+          # lost its older restore points (retain 7: one retried night is tolerated). The 8d PVC-age gate lets new volumes build up.
+          expr: |
+            label_replace(
+              kube_persistentvolumeclaim_info{storageclass="longhorn"}
+                and on (namespace, persistentvolumeclaim) (time() - kube_persistentvolumeclaim_created > 8 * 86400),
+              "volume", "$1", "volumename", "(.+)")
+              and on (volume) (longhorn_volume_state{state="attached"} == 1)
+            unless on (volume)
+            count by (volume) (
+              (longhorn_backup_state{recurring_job="backup-daily"} == 3)
+                and on (backup) longhorn_backup_state{recurring_job="backup-daily"} offset 4d
+            )
+          for: 1h
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }}'s oldest Longhorn backup is under 4 days old - retries are eating retention"
         - alert: LonghornMetricsMissing
           # The two backup alerts above go silent, not red, if Longhorn's metrics vanish.
           expr: absent(up{job="longhorn-backend"} == 1)
