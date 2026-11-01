@@ -32,6 +32,8 @@ ingress:
   auth: true
   annotations:
     nginx.ingress.kubernetes.io/app-root: /admin/
+    # FTL 6.8+ without a password 403s any Host except IPs, localhost and webserver.domain
+    nginx.ingress.kubernetes.io/upstream-vhost: pi.hole
 
 # LB IP uses externalTrafficPolicy: Local, and the config PVC is RWO - pin to orangepi
 # (the always-on control-plane node) rather than letting it float onto the worker node.

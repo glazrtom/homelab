@@ -350,6 +350,16 @@ prometheus-blackbox-exporter:
           valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
           preferred_ip_protocol: "ip4"
           ip_protocol_fallback: false
+      # FTL 6.8+ without a password 403s any Host except IPs, localhost and pi.hole
+      http_2xx_pihole:
+        prober: http
+        timeout: 9s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          preferred_ip_protocol: "ip4"
+          ip_protocol_fallback: false
+          headers:
+            Host: pi.hole
       tcp_connect:
         prober: tcp
         timeout: 9s
@@ -388,7 +398,7 @@ probes:
     module: http_2xx
   - name: pihole-web
     url: "http://pihole-web.pihole/admin/login"
-    module: http_2xx
+    module: http_2xx_pihole
   - name: pihole-dns
     url: "pihole-dns-tcp-svc.pihole:53"
     module: tcp_connect
