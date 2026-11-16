@@ -20,7 +20,7 @@ app:
 
 image:
   repository: pihole/pihole
-  tag: "2026.10.1"
+  tag: "2026.11.0"
   pullPolicy: IfNotPresent
 
 service:
